@@ -44,7 +44,7 @@ To compile against a specific branch's game files, put copies of `sts2.dll`, `Go
 | `src/StS2Bingo.Core` | Bingo logic with no game dependencies: events, detectors, goals, board generator, rules |
 | `src/StS2Bingo.Mod` | The mod: entry point, game adapter (hooks), network messages, UI, save files |
 | `tests/StS2Bingo.Core.Tests` | Unit and determinism tests |
-| `docs/` | Design spec, notes on game internals, archive |
+| `docs/` | Design spec, guides, archive |
 
 ## License
 

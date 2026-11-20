@@ -4,7 +4,7 @@ Guidance for AI agents working on this repo.
 
 ## Source of truth
 - **`docs/design-spec.md` is the design.** Read the relevant section before changing behavior. If a change departs from the spec, update the spec in the same commit, or ask first.
-- `docs/game-internals.md` records what we know about the game's code (types, hooks, messages, seeds). Add to it when you discover something.
+- **Notes on the game's internals live in `notes/game-internals.md`, which is local and gitignored.** Read it before working on the game adapter, and add to it when you discover something. The public repo holds only project code and docs about how the mod works, so never move these notes into `docs/` or commit them.
 - `docs/archive/` is history only. Don't follow it where it disagrees with the spec.
 
 ## Architecture rules (do not break)
@@ -15,7 +15,7 @@ Guidance for AI agents working on this repo.
 5. **A goal is completed by one player alone.** Never add values up across players.
 6. **One build runs on main and beta.** Build against main's `sts2.dll`. Look up anything that may differ between branches by name with fallbacks, and turn off the goals that depend on it if it's missing. Don't branch on version strings.
    - **Never compare game enums by their compiled value.** They're compiled into our DLL as numbers, and the numbers change between branches. For example, `GameMode.Custom` = 3 on main, but 3 means `Dread` on beta. Read enums by name through the adapter.
-   - Hooks whose signature differs between branches (e.g. `AfterDeath`) need a handler for each branch. See `docs/game-internals.md`.
+   - Hooks whose signature differs between branches (e.g. `AfterDeath`) need a handler for each branch. See `notes/game-internals.md` (local).
 7. **Compatibility with other mods:** general goals must count modded content. Don't hard-code vanilla IDs except in goals tied to a specific character.
 8. **Never commit game files** (`sts2.dll`, decompiled source, assets). `refs/` is gitignored for this reason.
 

@@ -2,13 +2,12 @@
 
 > **This is the source of truth for the design.** If code and this document disagree, one of them is wrong: fix the code or update this doc in the same change.
 > The first draft is kept at [`archive/sts2_bingo_v0_2026-11-20.md`](archive/sts2_bingo_v0_2026-11-20.md) for history only. Where it disagrees with this doc, this doc wins.
-> What we found in the game code is in [`game-internals.md`](game-internals.md).
 
 | | |
 |---|---|
 | Status | Design agreed, repo skeleton set up, no gameplay code yet |
 | Last updated | 2026-11-20 |
-| Game versions checked | main `v0.111.1`, beta `v0.113.1` (the beta code was decompiled and read) |
+| Game versions checked | main `v0.111.1`, beta `v0.113.1` |
 
 ---
 
@@ -50,7 +49,7 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 8. Local history of past boards and results, shown in the game.
 
 **Not in v1** (see section 16 for later ideas)
-- Other board sizes, difficulty settings, Blackout, solo Score mode.
+- Board size and difficulty settings (beyond the automatic 4×4 for Blitz), Blackout, solo Score mode.
 - Custom or user-written boards.
 - Team-only squares that scale with player count.
 - Web spectator view, OBS overlay, online leaderboards.
@@ -78,7 +77,7 @@ If nothing is set, the bingo seed is empty: the board is built from the run seed
 | Mode | Board(s) | Who gets a square | How you win |
 |---|---|---|---|
 | **Versus** (default) | Every player has **their own copy of the same board** | Each player fills their own squares | **First line.** Play continues; later placements are tracked (Alex 1st on floor 18, Sam 2nd on floor 23, …) |
-| **Lockout** | **One shared board.** A square takes the color of the player who got it | The **first** player to complete a goal gets the square, and it's **locked** for everyone else | **First line, or more than half the board** (13 of 25). If the run ends with neither, whoever has the most squares wins. Ties go to whoever reached that count first |
+| **Lockout** | **One shared board.** A square takes the color of the player who got it | The **first** player to complete a goal gets the square, and it's **locked** for everyone else | **First line, or a clinch** (section 4.3.1). If the run ends with neither, whoever has the most squares wins. Ties go to whoever reached that count first |
 | **Team** | **One shared board.** A square takes the color of the player who completed it | **Any one player** completing the goal fills it for the team | Cooperative. The result is squares filled, lines made, and the floor where the first line was made |
 
 Rules for every mode:
@@ -86,6 +85,27 @@ Rules for every mode:
 - In Versus and Lockout, the board only uses goals that **every** player's character can complete. In Team, a character's goals can appear if **anyone** is playing that character. Modded characters only get the general goals (section 6.4).
 - Lockout can be used to block other players (including taking the kill on an elite). That's part of the mode, and players choose it on purpose. Versus is the default for that reason.
 - If a player leaves or disconnects, their squares stay theirs. When they come back, they get the current board (section 7).
+
+#### 4.3.1 Lockout: the clinch rule
+
+**Why it's needed:** in Lockout, any opponent's square in a line kills that line for you. Partway through a match, every line can be blocked for everyone, and then nobody can ever win by a line. So Lockout also needs a way to win on squares. The classic 2-player rule is "13 of 25", which is just the point where you can't be caught. A clinch is that same idea, made general so it works with any number of players and any board size.
+
+**The rule:** a player **P** clinches, and wins at once, when **no other player can still win**. That means, for **every** other player **Q**, both of these are true:
+
+1. **Q can't catch up on squares:** `Q's squares + unclaimed squares ≤ P's squares`. Equal counts go to whoever got there first, which is P, so Q needs strictly more to be a threat.
+2. **Q has no live line left.** A line is live for Q if every square in it is Q's or unclaimed. **A big lead in squares is never a clinch while an opponent can still complete a line.**
+
+**Examples:**
+- **2 players, 5×5, nothing blocking lines:** this works out to the classic 13 of 25. With 13 squares, the other player can reach 12 at most.
+- **Lead, but a line is still open:** Alex has 13, Sam has 6, and 6 squares are unclaimed. Sam can reach 12 at most, so Sam can't catch up. But 5 of the unclaimed squares make up a row Sam could still complete, so it's **not** a clinch yet. Alex wins once one of those squares is claimed by Alex or a third player.
+- **4 players:** Alex 9, Sam 5, Kim 4, Lee 4, and 3 unclaimed. If no one but Alex has a live line, Alex clinches at 9 (Sam can reach 8 at most).
+- **Blitz 4×4, 2 players:** the same rule gives **8 of 16, as long as you reached 8 first**. The other player can then only tie at 8, and the tie goes to whoever got there first. Nothing about the 4×4 board is special-cased.
+
+**Details:**
+- The host checks for a clinch after every accepted claim, at the same moment it checks for lines.
+- Unclaimed squares count as still possible even when they can no longer be done in this run (e.g. an Act 1 goal after Act 1). That makes the rule safe: it can be slow to call a clinch, but it can never call one wrongly. Spotting squares that can no longer be done is a later improvement.
+- The UI shows what each player needs, e.g. "Alex needs 2 more squares to clinch" or "Sam still has 1 open line".
+- After a win, play continues and later placements are tracked, as in the other modes.
 
 ### 4.4 In-run UI
 
@@ -106,12 +126,12 @@ Rules for every mode:
 
 ```
 seedText   = bingoSeed (if one was entered) ?? runSeed      // both are the game's 12-character seed format
-boardSeed  = StableHash64("sts2bingo|" + seedText + "|" + goalListVersion + "|" + mode + "|" + sortedCharacterIds)
-board      = Generate(boardSeed, goalList filtered by (characters, available detectors), mode)
+boardSeed  = StableHash64("sts2bingo|" + seedText + "|" + goalListVersion + "|" + bingoMode + "|" + gameMode + "|" + size + "|" + sortedCharacterIds)
+board      = Generate(boardSeed, goalList filtered by (characters, game mode, available detectors), bingoMode, size)
 ```
 
-- **The run seed is the default.** The game keeps the seed as a string (`RunRngSet.StringSeed`, e.g. `7K2M9QX4ZB1C`). Every co-op player already has it, so in the default case **nothing about the board needs to be sent**. Sharing a run seed shares the whole experience.
-- **The bingo seed overrides it.** Uppercased and cleaned the same way the game does it (`SeedHelper.CanonicalizeSeed`: O→0, I→1). It lets you replay the same board on a different run seed, or a different board on the same run seed.
+- **The run seed is the default.** It's the same seed the game shows (e.g. `7K2M9QX4ZB1C`). Every co-op player already has it, so in the default case **nothing about the board needs to be sent**. Sharing a run seed shares the whole experience.
+- **The bingo seed overrides it.** It uses the same format as game seeds and is cleaned the same way (uppercased; O is read as 0 and I as 1). It lets you replay the same board on a different run seed, or a different board on the same run seed.
 - **The mod uses its own random numbers.** The board builder never uses the game's random number streams, so building a board can't change the run (map, rewards, shuffles).
 - **Stable hashing only.** We never use .NET's `string.GetHashCode()` (it changes every launch); we use our own hash (FNV-1a 64 or xxHash64) and our own seeded random number generator (SplitMix64 / xoshiro256**). Both are covered by tests.
 - **The board depends on the characters in the run**, because character-specific goals are filtered. So "same seed + same characters + same versions = same board."
@@ -144,6 +164,10 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 - Works like Bingosync's "SRL" generator: every row, column and both diagonals add up to about the same total difficulty.
 - No two goals with overlapping tags in the same line, exclusions are respected, and no goal appears twice (including the same template with different parameters).
 - v1 default: **5×5, medium difficulty mix**. Other sizes and difficulty settings are built into the data model but not shown in the menus.
+- **Game modes:** bingo is on in every game mode.
+  - Standard, Custom, Daily and **Dread** (beta) use the normal 5×5 board.
+  - **Blitz** (beta) uses a **4×4** board, to fit its shorter runs. Goals that need more of the run than Blitz has are tagged and left out.
+  - The game mode is part of the board inputs (section 5), so the same seed in Blitz and in Standard gives different boards.
 
 ### 6.3 Detectors
 - They're **plain C#** with no game types: small state machines that read game events (section 9.2) plus a read-only snapshot of the run.
@@ -159,21 +183,21 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 - If another mod changes the game so much that a goal can never be completed, that's acceptable. That should be rare, and it's the player's choice to combine those mods.
 
 ### 6.5 First goal list (v1)
-About 40–60 goals of the kinds that are easy to detect: event counters (cards per turn, Block, debuffs, potions), deck and run state (fully upgraded deck, unique cards, number of relics), exact values (overkill = 0; the game's `DamageResult.OverkillDamage` gives this directly), and time (act cleared within a time limit). The categories and examples in the [v0 draft §6](archive/sts2_bingo_v0_2026-11-20.md) are still the starting list.
+About 40–60 goals of the kinds that are easy to detect: event counters (cards per turn, Block, debuffs, potions), deck and run state (fully upgraded deck, unique cards, number of relics), exact values (e.g. a killing blow with exactly 0 overkill), and time (act cleared within a time limit). The categories and examples in the [v0 draft §6](archive/sts2_bingo_v0_2026-11-20.md) are still the starting list.
 
 ## 7. Co-op syncing
 
 **Everything goes over the game's own co-op connection.** No Steam lobby of our own, no relay server, no cost.
 
-- **Messages:** the mod defines its own message types (`INetMessage` structs). The game finds message types in mods automatically (`MessageTypes.Initialize` → `ReflectionHelper.GetSubtypesInMods<INetMessage>()`). All bingo messages are sent reliably.
+- **Messages:** the mod adds its own small message types to the game's co-op connection. They're always sent reliably.
 - **The host decides.** Every claim, the host's own included, goes through one function that applies the mode's rules:
-  1. A player's game detects a goal and sends `BingoClaimRequest { square, goalId, player, floor, turn, evidence }` to the host.
-  2. The host applies the mode's rules (Lockout: first valid claim wins; Versus and Team: accept) and assigns a sequence number.
-  3. The host sends `BingoClaimResult { seq, square, player, accepted, … }` to everyone. Every player's game applies results in sequence order, so all boards stay the same.
-- **Lobby options:** `BingoSettingsChanged { mode, bingoSeed }` goes from host to clients in the lobby. Before the run starts, everyone builds the board and checks it matches the host's (`BingoBoardHash`). If it doesn't, bingo is turned off for that run with a clear message, and the run itself is not affected.
-- **Rejoin or late join:** the host sends `BingoStateSnapshot` (settings, board hash, the full list of claims in order).
+  1. A player's game detects a goal and sends a **claim** (square, goal, player, floor, turn, evidence) to the host.
+  2. The host applies the mode's rules (Lockout: first valid claim wins; Versus and Team: accept) and gives the claim a sequence number.
+  3. The host sends the **result** to everyone. Every player's game applies results in sequence order, so all boards stay the same.
+- **Lobby options:** the host's bingo settings (mode, bingo seed) are sent to everyone in the lobby. Before the run starts, everyone builds the board and checks it matches the host's (a hash of the board). If it doesn't, bingo is turned off for that run with a clear message, and the run itself is not affected.
+- **Rejoin or late join:** the host sends a **snapshot**: settings, board hash, and the full list of claims in order.
 - **If the host leaves:** the co-op run itself depends on the host, so bingo ends with the run. Nothing needs to take over.
-- **Missing the mod or a different version:** the manifest sets `"affects_gameplay": true`. The game then puts the mod's id and version in the join handshake (`PeerVersionInfo.gameplayAffectingMods`) and blocks joins where the mod lists don't match. Our own message types also need matching mod lists to work. This takes care of "the other player needs the mod" without extra code (confirmed in spike B).
+- **Missing the mod or a different version:** the mod is marked as affecting gameplay, so the game itself compares mod lists when someone joins, and blocks the join if they don't match. This takes care of "the other player needs the mod" without extra code (to be confirmed in spike B).
 
 ## 8. Saving, continuing and history
 
@@ -185,25 +209,23 @@ About 40–60 goals of the kinds that are easy to detect: event counters (cards 
 ## 9. Supporting main and beta, and how events reach the mod
 
 ### 9.1 One build, adapting at runtime
-- The mod is **built against the main branch's `sts2.dll`** and the same DLL runs on main and beta.
-- **The only code that touches game internals is the game adapter** (`StS2Bingo.Mod/GameAdapter`). Everything else (detectors, board builder, rules, UI state) is in `StS2Bingo.Core` and uses no game types.
+- The mod is **built against the main branch** and the same file runs on main and beta.
+- **Only the game adapter talks to the game.** Everything else (detectors, board builder, rules, UI state) is in `StS2Bingo.Core` and has no game dependencies.
 - At startup the adapter connects each event source it can and **records which events are available**. The board builder only uses goals whose `requires.events` are all available. **So on any branch, any version, and alongside any other mods, every square on the board can be completed.** Anything that couldn't be connected is logged.
-- When a branch has a method under a different name or signature, its hook lists **several possible targets** (main's name first, then beta's).
-- Where a branch works **differently** (not just a different name), it gets its own small adapter class for each branch, picked by checking which methods exist, not by reading the version string.
-- **Branch check:** a small tool compares the main and beta copies of `sts2.dll` for every type and method the adapter uses. It runs whenever a game update arrives. Reference DLLs live in the gitignored `refs/main/` and `refs/beta/` folders.
+- When something has a different name on each branch, the adapter tries **each known name**, main's first.
+- Where a branch works **differently** (not just under a different name), it gets its own small adapter for that branch, picked by checking what the game actually has, not by reading the version string.
+- **Branch check:** a small tool compares the main and beta game files for everything the adapter uses. It runs whenever a game update arrives. Reference copies live in the gitignored `refs/` folder.
 
 ### 9.2 Where events come from (most to least preferred)
-1. **The game's official mod hooks.** `ModHelper.SubscribeForCombatStateHooks` and `ModHelper.SubscribeForRunStateHooks` let a mod return its own listener models, and the game then calls about 190 `After*` / `Before*` hooks on them (`AfterCardPlayed`, `AfterBlockGained`, `AfterDamageGiven` with `DamageResult.OverkillDamage`, `AfterPowerAmountChanged`, `AfterRoomEntered`, `AfterCombatVictory`, `AfterItemPurchased`, `AfterPotionUsed`, …). These are a public API made for mods, so they're the most likely to stay the same across branches and patches.
-   - **Split listeners into small groups by area** (combat, deck, map, economy, …), and register each group inside its own try/catch. If one hook's signature doesn't match on a branch, only that group fails to load.
-   - Listeners **only watch**: they always return `Task.CompletedTask` and never change game state.
-2. **Harmony postfix patches**, for anything the official hooks don't cover (e.g. UI screens, the run timer, save and continue). Targets are looked up by name with fallbacks (`TargetMethod()` + `Prepare()`, skipped when nothing matches). **Postfixes only. Never prefixes that skip the original method, and never transpilers.**
+1. **The game's official mod hooks.** The game lets mods listen to its own events (card played, Block gained, damage dealt, power applied, room entered, combat won, item bought, potion used, and many more). These exist for mods, so they're the most likely to stay the same across branches and patches.
+   - Listeners are **split into small groups by area** (combat, deck, map, economy, …), each connected on its own. If one doesn't fit a branch, only that group is lost.
+   - Listeners **only watch** and never change game state.
+2. **Harmony patches**, for anything the official hooks don't cover (e.g. UI screens, the run timer, save and continue). They're **postfixes only**, meaning they run after the game's own code. They never skip or rewrite the game's code, and they're skipped quietly when their target isn't found.
 3. **Reading the run state**, for deck and run checks (deck contents, relics, gold, act, floor), done when relevant events fire.
 
-The adapter turns everything into **events from `StS2Bingo.Core`** (`CardPlayed`, `BlockGained`, `DamageDealt`, `PowerApplied`, `TurnStarted`, `CombatEnded`, `RoomEntered`, `DeckChanged`, `ActCompleted`, …), each tagged with the player who caused it.
+The adapter turns everything into **Core events** (`CardPlayed`, `BlockGained`, `DamageDealt`, `PowerApplied`, `TurnStarted`, `CombatEnded`, `RoomEntered`, `DeckChanged`, `ActCompleted`, …), each tagged with the player who caused it.
 
-**Must be confirmed in spike A:**
-- A listener model has to be an `AbstractModel` (its only abstract member is `ShouldReceiveCombatHooks`), and its constructor registers an ID with `ModelDb`. Check how mod model types get registered, and that adding one doesn't change saves.
-- In co-op, check whether hooks run on every player's game for every player (the game simulates everyone), or only for the local player. Either way, **each game claims only for its own local player** so nothing is counted twice.
+**Each player's game claims only for its own local player**, so nothing is counted twice in co-op.
 
 ## 10. Project structure and tech
 
@@ -212,7 +234,7 @@ The adapter turns everything into **events from `StS2Bingo.Core`** (`CardPlayed`
 | Runtime | .NET 9 (`net9.0`, matching `sts2.runtimeconfig.json`), C# latest |
 | Engine | Godot 4.5.1 (GodotSharp 4.5.1) |
 | Patching | Harmony 2.4.2 (`0Harmony.dll`, comes with the game) |
-| Mod loading | The game's built-in `ModManager`: `mods/<folder>/<id>.json` + `<id>.dll` (+ an optional `<id>.pck`, which a code-only mod doesn't need) |
+| Mod loading | The game's built-in mod loader: `mods/<folder>/<id>.json` + `<id>.dll` |
 | Entry point | A class marked `[ModInitializer("Initialize")]` |
 | BaseLib | Allowed. Use it only where it saves real work (e.g. UI helpers), because every dependency also has to work on both branches |
 
@@ -223,8 +245,8 @@ src/
   StS2Bingo.Mod/          the mod: entry point, game adapter (hooks/patches), network messages, Godot UI, saving
 tests/
   StS2Bingo.Core.Tests/   unit, determinism and rule tests; replays of recorded event logs
-docs/                     this spec, game-internals notes, archive
-refs/  (gitignored)       copies of sts2.dll etc. for main and beta, used by the branch check
+docs/                     this spec, guides, archive
+refs/  (gitignored)       reference copies of game files for main and beta, used to build and for the branch check
 ```
 
 Manifest (`StS2Bingo.json`):
@@ -263,7 +285,7 @@ The `id` must not change after release: the game uses it for its settings and co
 5. **Solo, complete.** Board UI, mini-board, toasts, progress counters, seed entry (custom run and normal run), save and continue, results, history.
 6. **Co-op.** Messages, host-side rules for Versus, Lockout and Team, teammate previews and full-board view, feed, "one away" marker, rejoin snapshot.
 7. **Polish.** Settings, colorblind palette, controller navigation, branch check, error messages.
-8. **Release v1.** Main and beta, solo and co-op. Nexus and Workshop pages, a demo video, a pitch to bingo players.
+8. **Release v1.** Main and beta, solo and co-op. **Solo and co-op ship together, or not at all.** There's no solo-only release. Shared mainly through the **Steam Workshop** (which brings its own visibility) and **Reddit** posts, with a short demo clip. A Nexus page is optional.
 
 ## 12. Testing
 
@@ -274,6 +296,7 @@ The `id` must not change after release: the game uses it for its settings and co
   - co-op events from two players interleaved, to confirm players are tracked separately and numbers are never added across players.
 - **Determinism:** property tests checking that the same inputs always give the same board, that lines stay within their difficulty limits, and that exclusions are respected. A **known-answer test** pins exact boards for a few seeds, so changes to the hash or random number generator are caught.
 - **Rules:** all three modes, plus simultaneous claims, duplicate claims, claims after a win, rejoin snapshots. All of it is plain C#, with no game or network needed.
+- **Clinch:** each example in section 4.3.1 becomes a test. In particular, a big lead in squares while an opponent still has a live line must **not** count as a clinch. Also covered: ties, 3–4 players, the 4×4 board, and the run ending before anyone has won.
 - **Branches:** replay tests run against recordings from both branches. The branch check tool compares the adapter's targets in `refs/main` and `refs/beta`.
 - **Save and continue:** quit in the middle of a goal in progress, continue, and check that the progress comes back.
 - **Compatibility:** smoke-test runs with a popular character mod (e.g. Chaos Zero Nightmare / Tiphera) and a mod that adds events. The board has to build, general goals have to fire, and nothing can crash.
@@ -284,7 +307,7 @@ The `id` must not change after release: the game uses it for its settings and co
 | Risk | What to do about it |
 |---|---|
 | Early Access patches change hooks or signatures | Official hooks first; a thin adapter layer; listener groups loaded separately; goals left out when their events aren't available; the branch check tool; replaying recordings after every update |
-| A listener model breaks saves or co-op (it registers a `ModelDb` ID) | Confirm in spike A. Fallback: Harmony postfixes on the game's `Hook.*` dispatchers |
+| Listening to the official hooks has side effects on saves or co-op | Confirm in spike A. Fallback: Harmony postfixes |
 | Main and beta drift apart while we're building | Build against main, check against beta often, use per-branch adapters only where needed |
 | Another mod patches the same methods | Postfixes only; never skip the original method; never use transpilers; catch errors inside every patch |
 | Co-op desync from the mod | The mod never changes game state. Bingo state is separate from the game state and is synced only through our own messages, with the host deciding |
@@ -296,15 +319,12 @@ The `id` must not change after release: the game uses it for its settings and co
 
 - The repo is **public, but not open source at first**. `LICENSE` says *all rights reserved*: people can read the code, but not copy it, change it or reuse it without permission. Note that GitHub's terms still let others view and fork public repos on GitHub.
 - We'll revisit after release (e.g. switching to MIT or GPL later).
-- **Never commit** game files (`sts2.dll`, decompiled source, game assets). They stay in the gitignored `refs/` folder or in temporary folders.
+- **Never commit** game files or game code. Reference copies stay in the gitignored `refs/` folder.
 
 ## 15. Open questions
 
-- **Name:** "StS2 Bingo" for now (and the mod id `StS2Bingo`, which won't change). Alternatives: "Spire Bingo", "Lockout Spire".
-- **Release order:** v1 = solo and co-op together, or solo first?
-- **Lockout majority** with 3–4 players: is "more than half" right, or should it be "most squares when the run ends"?
-- **When to pitch** to the bingo community: before or after the solo milestone?
-- **Keeping a main install around for testing:** Steam only installs one branch at a time. Options: switch branches for each test session, or keep a copy of the game folder for the other branch.
+- **Display name:** "StS2 Bingo" for now. Decide when it's ready to publish. The mod id `StS2Bingo` won't change.
+- **Keeping a main install around for testing:** Steam only installs one branch at a time. Options: switch branches for each test session, or keep a copy of the game folder for the other branch. (Reference copies for both branches are already in `refs/`.)
 
 ## 16. Later ideas
 
