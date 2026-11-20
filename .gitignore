@@ -1,0 +1,40 @@
+# Game binaries copied for reference/compiling. Never commit these: they are MegaCrit's code.
+refs/
+
+# Local-only notes on the game's internals (kept out of the public repo)
+notes/
+
+# Local machine overrides (game path etc.)
+local.props
+
+# .NET build output
+bin/
+obj/
+*.user
+*.suo
+TestResults/
+*.trx
+coverage*/
+
+# IDEs
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.DotSettings.user
+
+# Godot
+.godot/
+*.import
+export_presets.cfg
+
+# Mod packaging output
+dist/
+
+# Event recordings from live runs (large; curated fixtures live under tests/fixtures)
+recordings/
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
