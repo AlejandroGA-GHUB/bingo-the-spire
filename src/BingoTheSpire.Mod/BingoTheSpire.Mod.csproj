@@ -23,6 +23,7 @@
     <Compile Include="$(RepoRoot)src\BingoTheSpire.Core\**\*.cs"
              Exclude="$(RepoRoot)src\BingoTheSpire.Core\bin\**;$(RepoRoot)src\BingoTheSpire.Core\obj\**"
              Link="Core\%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="$(RepoRoot)src\BingoTheSpire.Core\Goals\goals.json" LogicalName="BingoTheSpire.goals.json" />
   </ItemGroup>
 
   <!-- Game assemblies: compile-time only, never copied (the game provides them at runtime). -->

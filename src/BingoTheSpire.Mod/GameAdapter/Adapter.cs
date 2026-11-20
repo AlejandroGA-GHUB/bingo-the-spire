@@ -231,14 +231,14 @@ internal static class Adapter
             play.Resources.EnergySpent, play.Resources.StarsSpent, play.IsAutoPlay, KindOf(play.Target)));
 
     public static void OnBlockGained(Creature creature, decimal amount, CardModel? cardSource) =>
-        Publish(new BlockGained(creature.Player?.NetId, KindOf(creature), creature.CombatId, ToInt(amount), cardSource?.Id.Entry));
+        Publish(new BlockGained(PlayerIdOf(creature), KindOf(creature), creature.CombatId, ToInt(amount), cardSource?.Id.Entry));
 
     public static void OnDamageGiven(Creature? dealer, DamageResult result, Creature target, CardModel? cardSource) =>
         Publish(new DamageDealt(
-            DealerPlayerId: dealer?.Player?.NetId,
+            DealerPlayerId: PlayerIdOf(dealer),
             DealerKind: KindOf(dealer),
             TargetKind: KindOf(target),
-            TargetPlayerId: target.Player?.NetId,
+            TargetPlayerId: PlayerIdOf(target),
             TargetId: target.Monster?.Id.Entry,
             TargetCombatId: target.CombatId,
             Unblocked: result.UnblockedDamage,
@@ -272,10 +272,10 @@ internal static class Adapter
             Delta: ToInt(amount),
             Amount: power.DisplayAmount,
             OwnerKind: KindOf(owner),
-            OwnerPlayerId: owner?.Player?.NetId,
+            OwnerPlayerId: PlayerIdOf(owner),
             OwnerId: owner?.Monster?.Id.Entry,
             OwnerCombatId: owner?.CombatId,
-            ApplierPlayerId: applier?.Player?.NetId,
+            ApplierPlayerId: PlayerIdOf(applier),
             CardId: cardSource?.Id.Entry));
     }
 
@@ -295,6 +295,9 @@ internal static class Adapter
         }
         return creature.IsEnemy ? CreatureKind.Enemy : CreatureKind.Ally;
     }
+
+    /// <summary>The player a creature is or belongs to: pets (e.g. Necrobinder's Osty) report their owner.</summary>
+    private static ulong? PlayerIdOf(Creature? creature) => (creature?.Player ?? creature?.PetOwner)?.NetId;
 
     private static int ToInt(decimal value) => (int)Math.Round(value, MidpointRounding.AwayFromZero);
 

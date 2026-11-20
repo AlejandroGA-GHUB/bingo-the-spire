@@ -14,4 +14,9 @@
     <InternalsVisibleTo Include="BingoTheSpire.Core.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Fixed name so the same lookup works here and when compiled into the mod. -->
+    <EmbeddedResource Include="Goals\goals.json" LogicalName="BingoTheSpire.goals.json" />
+  </ItemGroup>
+
 </Project>

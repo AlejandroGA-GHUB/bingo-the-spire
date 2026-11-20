@@ -122,10 +122,11 @@ public sealed record Shuffled(ulong PlayerId) : GameEvent;
 
 // ---- Damage, Block, HP -------------------------------------------------------------------
 
+// Player ids on creatures: a pet reports its owner, with kind "pet", so goals can count or skip pets.
 // Creatures in a combat have a CombatId that is unique within that combat, so two enemies of the
 // same kind (e.g. four Phantasmal Gardeners) can be told apart. Ids restart in every combat.
 
-/// <param name="PlayerId">Set when the creature gaining Block is a player.</param>
+/// <param name="PlayerId">The player who gained Block, or whose pet did (see <c>CreatureKind</c>).</param>
 public sealed record BlockGained(ulong? PlayerId, string CreatureKind, uint? CombatId, int Amount, string? CardId) : GameEvent;
 
 /// <param name="Overkill">Damage beyond what was needed to kill. 0 on an exact kill.</param>

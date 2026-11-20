@@ -163,7 +163,7 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 ```
 
 - The goal list is an embedded, **versioned** JSON file (`goalListVersion`).
-- `requires.events` says which game events the detector needs. If any are missing on this game version, the goal is left out (section 9).
+- `requires.events` is optional: the detector catalog already knows which game events each detector needs. A goal is left out if its detector, or any event listed here, is missing on this game version (section 9).
 - `requires.character` is optional. Character-specific goals are matched by the game's character ID.
 
 ### 6.2 Board builder
@@ -185,6 +185,14 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 - They output `Completed(goalId, playerId, evidence)` and optionally `Progress(goalId, playerId, current, target)` for the in-progress counters.
 - **Each player is tracked separately.** Every event carries the player who caused it, and detectors never add values up across players.
 - They can be unit-tested by replaying recorded event logs, without starting the game.
+- **Most goals are one of two shapes:** a *counter* ("do X {n} times within a turn / fight / shop visit / run", restarting from 0 when that scope ends) or a *threshold* ("reach {n} in one go", e.g. one hit, gold held). A few have their own logic (flawless fights, hits from one card, debuffs on one enemy).
+- **What counts:**
+  - A **turn** is one combat round: the player's turn plus the enemy turn after it. "Draw {n} cards in a turn" includes the opening hand.
+  - **Damage** is the full hit as shown in game: HP lost, Block removed and overkill.
+  - **Pets** (e.g. Necrobinder's Osty) count for their owner.
+  - **Without losing HP** means the player's HP never went down during the fight, including HP paid for their own cards.
+  - **Fights won** (elites, bosses, quick wins) count for every player in the fight. Skipping a fight with the dev console counts as winning it; the mod doesn't police cheats.
+  - When a co-op player's share can't be told apart in the game's numbers (two players stacking Poison on one enemy), detectors track each player's own share instead.
 
 ### 6.4 Rules that keep goals working with other mods
 - **General goals count all content, modded included:** "10 different buffs" counts any power, modded ones too. "Play 10 cards in a turn" counts any card.
@@ -194,7 +202,10 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 - If another mod changes the game so much that a goal can never be completed, that's acceptable. That should be rare, and it's the player's choice to combine those mods.
 
 ### 6.5 First goal list (v1)
-About 40–60 goals of the kinds that are easy to detect: event counters (cards per turn, Block, debuffs, potions), deck and run state (fully upgraded deck, unique cards, number of relics), exact values (e.g. a killing blow with exactly 0 overkill), and time (act cleared within a time limit). The categories and examples in the [v0 draft §6](archive/sts2_bingo_v0_2026-11-20.md) are still the starting list.
+The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (version 1, 45 goals):
+- **39 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy and expensive cards; exhaust, shuffles and created cards; damage per turn, single hits, overkill, exact-lethal kills, kills per turn and hits from one card; Block per turn; flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
+- **6 character goals:** Ironclad Strength, Silent Poison, Defect orbs, Necrobinder pet damage and Regent stars.
+- **Still to add,** because they need more events from the game: deck and run state (fully upgraded deck, unique cards, number of relics) and time (act cleared within a time limit). The [v0 draft §6](archive/sts2_bingo_v0_2026-11-20.md) has more ideas.
 
 ## 7. Co-op syncing
 
@@ -222,7 +233,7 @@ About 40–60 goals of the kinds that are easy to detect: event counters (cards 
 ### 9.1 One build, adapting at runtime
 - The mod is **built against the main branch** and the same file runs on main and beta.
 - **Only the game adapter talks to the game.** Everything else (detectors, board builder, rules, UI state) is in `BingoTheSpire.Core` and has no game dependencies.
-- At startup the adapter connects each event source it can and **records which events are available**. The board builder only uses goals whose `requires.events` are all available. **So on any branch, any version, and alongside any other mods, every square on the board can be completed.** Anything that couldn't be connected is logged.
+- At startup the adapter connects each event source it can and **records which events are available**. The board builder only uses goals whose detector has every event it needs. **So on any branch, any version, and alongside any other mods, every square on the board can be completed.** Anything that couldn't be connected is logged.
 - When something has a different name on each branch, the adapter tries **each known name**, main's first.
 - Where a branch works **differently** (not just under a different name), it gets its own small adapter for that branch, picked by checking what the game actually has, not by reading the version string.
 - **Branch check:** a small tool compares the main and beta game files for everything the adapter uses. It runs whenever a game update arrives. Reference copies live in the gitignored `refs/` folder.

@@ -172,12 +172,14 @@ public class BoardBuilderTests
             Requires: new GoalRequirements(Character: "SILENT"));
         var goals = TestGoals.With(general, silent);
 
-        Assert.True(BoardBuilder.EligibleGoals(goals, Request(characters: "SILENT"), "Standard", DetectionCapabilities.All).Contains(silent));
-        Assert.False(BoardBuilder.EligibleGoals(goals, Request(characters: ["SILENT", "IRONCLAD"]), "Standard", DetectionCapabilities.All).Contains(silent));
-        Assert.False(BoardBuilder.EligibleGoals(goals, Request(mode: BingoMode.Lockout, characters: ["SILENT", "IRONCLAD"]), "Standard", DetectionCapabilities.All).Contains(silent));
-        Assert.True(BoardBuilder.EligibleGoals(goals, Request(mode: BingoMode.Team, characters: ["SILENT", "IRONCLAD"]), "Standard", DetectionCapabilities.All).Contains(silent));
+        List<GoalDefinition> Eligible(BoardRequest r) => BoardBuilder.EligibleGoals(goals, r, "Standard", DetectionCapabilities.All);
+
+        Assert.Contains(silent, Eligible(Request(characters: "SILENT")));
+        Assert.DoesNotContain(silent, Eligible(Request(characters: ["SILENT", "IRONCLAD"])));
+        Assert.DoesNotContain(silent, Eligible(Request(mode: BingoMode.Lockout, characters: ["SILENT", "IRONCLAD"])));
+        Assert.Contains(silent, Eligible(Request(mode: BingoMode.Team, characters: ["SILENT", "IRONCLAD"])));
         // A modded character only gets general goals.
-        Assert.False(BoardBuilder.EligibleGoals(goals, Request(characters: "TIPHERA"), "Standard", DetectionCapabilities.All).Contains(silent));
+        Assert.DoesNotContain(silent, Eligible(Request(characters: "TIPHERA")));
     }
 
     [Fact]
