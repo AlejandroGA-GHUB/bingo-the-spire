@@ -60,8 +60,8 @@ internal sealed class BingoRuntime
             session.Filled += f => BingoLog.Info(
                 $"square {Cell(board, f.Square)} done by player {f.PlayerId}: \"{board.Squares[f.Square].Text}\" ({f.Completion.Evidence}{Where(f.Completion.At)})");
             session.LineDone += l => BingoLog.Info(l.Ordinal == 1
-                ? $"BINGO! player {l.PlayerId} completed {LineName(board.Size, l.Line)}{Where(l.At)}"
-                : $"line #{l.Ordinal} for player {l.PlayerId}: {LineName(board.Size, l.Line)}{Where(l.At)}");
+                ? $"BINGO! player {l.PlayerId} completed {BoardRules.LineName(board.Size, l.Line).ToLowerInvariant()}{Where(l.At)}"
+                : $"line #{l.Ordinal} for player {l.PlayerId}: {BoardRules.LineName(board.Size, l.Line).ToLowerInvariant()}{Where(l.At)}");
 
             Session = session;
             BingoLog.Info(Describe(board));
@@ -103,14 +103,6 @@ internal sealed class BingoRuntime
     }
 
     private static string Cell(BingoBoard board, int index) => $"r{index / board.Size + 1}c{index % board.Size + 1}";
-
-    private static string LineName(int size, int line) => line switch
-    {
-        _ when line < size => $"row {line + 1}",
-        _ when line < size * 2 => $"column {line - size + 1}",
-        _ when line == size * 2 => "the top-left diagonal",
-        _ => "the top-right diagonal",
-    };
 
     private static string Where(RunPosition? at) =>
         at == null ? "" : $", act {at.Act + 1} floor {at.Floor}" + (at.Round is { } r ? $" turn {r}" : "");

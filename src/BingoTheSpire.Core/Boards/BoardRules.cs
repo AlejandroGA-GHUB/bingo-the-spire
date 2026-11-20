@@ -47,6 +47,15 @@ public static class BoardRules
         _ => throw new ArgumentOutOfRangeException(nameof(size), size, "board size must be 4 or 5"),
     };
 
+    /// <summary>Readable name of a line from <see cref="Lines"/>, e.g. "Row 2", "Column 5", "Diagonal ↘".</summary>
+    public static string LineName(int size, int line) => line switch
+    {
+        _ when line < size => $"Row {line + 1}",
+        _ when line < size * 2 => $"Column {line - size + 1}",
+        _ when line == size * 2 => "Diagonal ↘",
+        _ => "Diagonal ↙",
+    };
+
     /// <summary>Every row, column and both diagonals, as lists of cell indexes (row-major).</summary>
     public static IReadOnlyList<int[]> Lines(int size)
     {
