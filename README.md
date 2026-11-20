@@ -23,6 +23,7 @@ Requirements:
 dotnet build                          # builds and copies the mod to <game>/mods/StS2Bingo/
 dotnet build -p:DeployToGame=false    # builds without touching the game folder
 dotnet test                           # runs the Core unit tests (no game needed)
+dotnet run --project tools/BranchCheck   # checks the built mod against each branch's game files in refs/
 ```
 
 If the game isn't installed at the default Steam path, create a `local.props` file in the repo root (it's gitignored):

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Loads the built mod against each branch's game files in refs/ and reports hook listeners that
+    fail to load or no longer override a game hook. Run after every game update:
+      dotnet build, then: dotnet run (project tools/BranchCheck)
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>

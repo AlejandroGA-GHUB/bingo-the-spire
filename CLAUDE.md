@@ -30,6 +30,7 @@ Guidance for AI agents working on this repo.
 dotnet build -p:DeployToGame=false   # build only
 dotnet build                         # build + copy the mod into <GameDir>/mods/StS2Bingo
 dotnet test                          # Core tests
+dotnet run --project tools/BranchCheck   # after a build: check the mod against every branch in refs/
 ```
 Game path: `GameDir` in `Directory.Build.props`, overridden by the gitignored `local.props`.
 
