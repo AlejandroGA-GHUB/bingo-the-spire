@@ -8,8 +8,8 @@ Guidance for AI agents working on this repo.
 - `docs/archive/` is history only. Don't follow it where it disagrees with the spec.
 
 ## Architecture rules (do not break)
-1. **`StS2Bingo.Core` has no game references.** No `sts2.dll`, Godot or Harmony types. Everything in Core must be testable with plain `dotnet test`.
-2. **Only the game adapter in `StS2Bingo.Mod` touches game internals.** It turns game hooks into Core events, tagged with the player who caused them.
+1. **`BingoTheSpire.Core` has no game references.** No `sts2.dll`, Godot or Harmony types. Everything in Core must be testable with plain `dotnet test`.
+2. **Only the game adapter in `BingoTheSpire.Mod` touches game internals.** It turns game hooks into Core events, tagged with the player who caused them.
 3. **The mod only watches the game.** Patches are postfixes or official hook listeners that never change game state. No prefixes that skip the original method, no transpilers. Catch exceptions inside every hook so nothing reaches the game.
 4. **Determinism:** never use `string.GetHashCode()`, `System.Random`, the game's random number streams, or the clock for board generation. Use `StableHash` and our own seeded random number generator.
 5. **A goal is completed by one player alone.** Never add values up across players.
@@ -20,15 +20,15 @@ Guidance for AI agents working on this repo.
 8. **Never commit game files** (`sts2.dll`, decompiled source, assets). `refs/` is gitignored for this reason.
 
 ## Layout
-- `src/StS2Bingo.Core/`: bingo logic only, no game dependencies. Its source files are **compiled into** the mod's DLL through a linked `<Compile Include>`. The game loads exactly one `<id>.dll` per mod.
-- `src/StS2Bingo.Mod/`: entry point `ModEntry` (`[ModInitializer]`), manifest `StS2Bingo.json` (the `id` must equal the AssemblyName and must never change).
-- `tests/StS2Bingo.Core.Tests/`: xUnit tests on net10.0. Core and the mod target net9.0 to match the game.
+- `src/BingoTheSpire.Core/`: bingo logic only, no game dependencies. Its source files are **compiled into** the mod's DLL through a linked `<Compile Include>`. The game loads exactly one `<id>.dll` per mod.
+- `src/BingoTheSpire.Mod/`: entry point `ModEntry` (`[ModInitializer]`), manifest `BingoTheSpire.json` (the `id` must equal the AssemblyName and must never change).
+- `tests/BingoTheSpire.Core.Tests/`: xUnit tests on net10.0. Core and the mod target net9.0 to match the game.
 - `refs/main/`, `refs/beta/` (gitignored): copies of the game DLLs for each branch, for compiling and comparing branches.
 
 ## Commands
 ```sh
 dotnet build -p:DeployToGame=false   # build only
-dotnet build                         # build + copy the mod into <GameDir>/mods/StS2Bingo
+dotnet build                         # build + copy the mod into <GameDir>/mods/BingoTheSpire
 dotnet test                          # Core tests
 dotnet run --project tools/BranchCheck   # after a build: check the mod against every branch in refs/
 ```

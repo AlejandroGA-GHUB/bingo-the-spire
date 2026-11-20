@@ -1,4 +1,4 @@
-# StS2 Bingo
+# Bingo the Spire
 
 A **Slay the Spire 2** mod that puts a bingo board in every run. Squares complete **automatically** when the game detects each goal, so nobody marks squares by hand.
 
@@ -20,7 +20,7 @@ Requirements:
 - Slay the Spire 2 installed.
 
 ```sh
-dotnet build                          # builds and copies the mod to <game>/mods/StS2Bingo/
+dotnet build                          # builds and copies the mod to <game>/mods/BingoTheSpire/
 dotnet build -p:DeployToGame=false    # builds without touching the game folder
 dotnet test                           # runs the Core unit tests (no game needed)
 dotnet run --project tools/BranchCheck   # checks the built mod against each branch's game files in refs/
@@ -42,9 +42,9 @@ To compile against a specific branch's game files, put copies of `sts2.dll`, `Go
 
 | Path | Contents |
 |---|---|
-| `src/StS2Bingo.Core` | Bingo logic with no game dependencies: events, detectors, goals, board generator, rules |
-| `src/StS2Bingo.Mod` | The mod: entry point, game adapter (hooks), network messages, UI, save files |
-| `tests/StS2Bingo.Core.Tests` | Unit and determinism tests |
+| `src/BingoTheSpire.Core` | Bingo logic with no game dependencies: events, detectors, goals, board generator, rules |
+| `src/BingoTheSpire.Mod` | The mod: entry point, game adapter (hooks), network messages, UI, save files |
+| `tests/BingoTheSpire.Core.Tests` | Unit and determinism tests |
 | `docs/` | Design spec, guides, archive |
 
 ## License

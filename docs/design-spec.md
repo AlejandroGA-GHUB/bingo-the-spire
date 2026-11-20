@@ -1,4 +1,4 @@
-# StS2 Bingo: design spec
+# Bingo the Spire: design spec
 
 > **This is the source of truth for the design.** If code and this document disagree, one of them is wrong: fix the code or update this doc in the same change.
 > The first draft is kept at [`archive/sts2_bingo_v0_2026-11-20.md`](archive/sts2_bingo_v0_2026-11-20.md) for history only. Where it disagrees with this doc, this doc wins.
@@ -126,7 +126,7 @@ Rules for every mode:
 
 ```
 seedText   = bingoSeed (if one was entered) ?? runSeed      // both are the game's 12-character seed format
-boardSeed  = StableHash64("sts2bingo|" + seedText + "|" + goalListVersion + "|" + bingoMode + "|" + gameMode + "|" + size + "|" + sortedCharacterIds)
+boardSeed  = StableHash64("bingothespire|" + seedText + "|" + goalListVersion + "|" + bingoMode + "|" + gameMode + "|" + size + "|" + sortedCharacterIds)
 board      = Generate(boardSeed, goalList filtered by (characters, game mode, available detectors), bingoMode, size)
 ```
 
@@ -204,13 +204,13 @@ About 40–60 goals of the kinds that are easy to detect: event counters (cards 
 - **Run state:** settings, board hash, claims, and detectors' in-progress state (e.g. "7/10 cards this turn") are saved to a small file in the mod's data folder, keyed by the run's seed and start time, and saved after every claim and at every room change. **Continue** reloads it. If the file is missing or doesn't match, the board is rebuilt from the seed, with no claims.
 - **History:** one tiny line per finished bingo run (date, mode, seed and board code, characters, result, floor and time of each line, squares filled), stored as JSON lines in `bingo_history.jsonl` in the mod's data folder.
 - **History screen:** the in-game panel lists past runs and personal bests (fastest first line by floor and by time, most squares in Team) and **shows the folder path**, with a button to open it, for anyone curious.
-- The data folder is a `sts2_bingo/` folder inside the game's user data folder (Godot `user://`). The exact path is confirmed in spike A.
+- The data folder is `bingo_the_spire/` inside the game's user data folder (Godot `user://`; on Windows `%APPDATA%\SlayTheSpire2\bingo_the_spire`).
 
 ## 9. Supporting main and beta, and how events reach the mod
 
 ### 9.1 One build, adapting at runtime
 - The mod is **built against the main branch** and the same file runs on main and beta.
-- **Only the game adapter talks to the game.** Everything else (detectors, board builder, rules, UI state) is in `StS2Bingo.Core` and has no game dependencies.
+- **Only the game adapter talks to the game.** Everything else (detectors, board builder, rules, UI state) is in `BingoTheSpire.Core` and has no game dependencies.
 - At startup the adapter connects each event source it can and **records which events are available**. The board builder only uses goals whose `requires.events` are all available. **So on any branch, any version, and alongside any other mods, every square on the board can be completed.** Anything that couldn't be connected is logged.
 - When something has a different name on each branch, the adapter tries **each known name**, main's first.
 - Where a branch works **differently** (not just under a different name), it gets its own small adapter for that branch, picked by checking what the game actually has, not by reading the version string.
@@ -239,21 +239,21 @@ The adapter turns everything into **Core events** (`CardPlayed`, `BlockGained`, 
 | BaseLib | Allowed. Use it only where it saves real work (e.g. UI helpers), because every dependency also has to work on both branches |
 
 ```
-StS2Bingo.sln
+BingoTheSpire.sln
 src/
-  StS2Bingo.Core/         pure logic: events, detectors, goals, generator, rules, state, hashing (no game references)
-  StS2Bingo.Mod/          the mod: entry point, game adapter (hooks/patches), network messages, Godot UI, saving
+  BingoTheSpire.Core/     pure logic: events, detectors, goals, generator, rules, state, hashing (no game references)
+  BingoTheSpire.Mod/      the mod: entry point, game adapter (hooks/patches), network messages, Godot UI, saving
 tests/
-  StS2Bingo.Core.Tests/   unit, determinism and rule tests; replays of recorded event logs
+  BingoTheSpire.Core.Tests/  unit, determinism and rule tests; replays of recorded event logs
 docs/                     this spec, guides, archive
 refs/  (gitignored)       reference copies of game files for main and beta, used to build and for the branch check
 ```
 
-Manifest (`StS2Bingo.json`):
+Manifest (`BingoTheSpire.json`):
 ```json
 {
-  "id": "StS2Bingo",
-  "name": "StS2 Bingo",
+  "id": "BingoTheSpire",
+  "name": "Bingo the Spire",
   "author": "…",
   "description": "In-game, auto-detected bingo boards for solo and co-op runs.",
   "version": "0.1.0",
@@ -323,7 +323,7 @@ The `id` must not change after release: the game uses it for its settings and co
 
 ## 15. Open questions
 
-- **Display name:** "StS2 Bingo" for now. Decide when it's ready to publish. The mod id `StS2Bingo` won't change.
+- **Name:** decided 2026-11-20: **Bingo the Spire** (repo `bingo-the-spire`, mod id `BingoTheSpire`, which must never change after release).
 - **Keeping a main install around for testing:** Steam only installs one branch at a time. Options: switch branches for each test session, or keep a copy of the game folder for the other branch. (Reference copies for both branches are already in `refs/`.)
 
 ## 16. Later ideas

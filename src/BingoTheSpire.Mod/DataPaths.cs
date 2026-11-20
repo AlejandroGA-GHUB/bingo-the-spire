@@ -1,0 +1,11 @@
+using Godot;
+
+namespace BingoTheSpire.Mod;
+
+/// <summary>Where the mod keeps its files: a folder inside the game's own user data folder.</summary>
+internal static class DataPaths
+{
+    public static string Root => ProjectSettings.GlobalizePath("user://bingo_the_spire");
+
+    public static string Recordings => System.IO.Path.Combine(Root, "recordings");
+}

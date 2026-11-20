@@ -4,7 +4,7 @@ using System.Runtime.Loader;
 // Usage: BranchCheck [modDll] [refsRoot]
 // Defaults: the Debug build of the mod, and every branch folder under refs/ (refs/main, refs/beta, ...).
 var repoRoot = FindRepoRoot(AppContext.BaseDirectory);
-var modDll = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(repoRoot, "src", "StS2Bingo.Mod", "bin", "Debug", "net9.0", "StS2Bingo.dll"));
+var modDll = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(repoRoot, "src", "BingoTheSpire.Mod", "bin", "Debug", "net9.0", "BingoTheSpire.dll"));
 var refsRoot = Path.GetFullPath(args.Length > 1 ? args[1] : Path.Combine(repoRoot, "refs"));
 
 if (!File.Exists(modDll))
@@ -144,7 +144,7 @@ static string ReadVersion(string refsDir)
 static string FindRepoRoot(string start)
 {
     var dir = new DirectoryInfo(start);
-    while (dir != null && !File.Exists(Path.Combine(dir.FullName, "StS2Bingo.sln")))
+    while (dir != null && !File.Exists(Path.Combine(dir.FullName, "BingoTheSpire.sln")))
     {
         dir = dir.Parent;
     }
