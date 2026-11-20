@@ -186,6 +186,13 @@ public class BingoSessionTests
         return state;
     }
 
+    private static BoardState Players(BingoMode mode, params ulong[] players)
+    {
+        var state = new BoardState(Board(5, mode));
+        state.SetPlayers(players);
+        return state;
+    }
+
     private static void Give(BoardState state, ulong player, params int[] squares)
     {
         foreach (var square in squares)
@@ -243,6 +250,50 @@ public class BingoSessionTests
         Give(state, Alex, 1, 7);
         state.Finish(null);
         Assert.Equal(new BingoWin(Sam, WinReason.MostSquares, null), state.Winner);
+    }
+
+    [Fact]
+    public void Versus_RunEndsWithoutALine_MostSquaresWins_TiesToWhoGotThereFirst()
+    {
+        var state = Players(BingoMode.Versus, Alex, Sam);
+        Give(state, Alex, 0, 6, 12);
+        Give(state, Sam, 0, 6);
+        Give(state, Sam, 12); // ties Alex at 3, but later
+        Give(state, Sam, 18);
+        Give(state, Alex, 18); // ties Sam at 4, but later
+        state.Finish(null);
+        Assert.Equal(new BingoWin(Sam, WinReason.MostSquares, null), state.Winner);
+    }
+
+    [Fact]
+    public void Versus_FirstLineStillBeatsMostSquares()
+    {
+        var state = Players(BingoMode.Versus, Alex, Sam);
+        Give(state, Sam, 0, 6, 12, 18, 2, 8, 14);
+        Give(state, Alex, 0, 1, 2, 3, 4);
+        state.Finish(null);
+        Assert.Equal(new BingoWin(Alex, WinReason.Line, null), state.Winner);
+    }
+
+    [Theory]
+    [InlineData(BingoMode.Versus)]
+    [InlineData(BingoMode.Lockout)]
+    public void Solo_RunEndsWithoutALine_NobodyWins(BingoMode mode)
+    {
+        var state = Players(mode, Alex);
+        Give(state, Alex, 0, 6, 12);
+        state.Finish(null);
+        Assert.Null(state.Winner);
+    }
+
+    [Fact]
+    public void Team_RunEnds_NobodyWins()
+    {
+        var state = Players(BingoMode.Team, Alex, Sam);
+        Give(state, Alex, 0, 6);
+        Give(state, Sam, 12);
+        state.Finish(null);
+        Assert.Null(state.Winner);
     }
 
     [Fact]

@@ -78,7 +78,7 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 
 | Mode | Board(s) | Who gets a square | How you win |
 |---|---|---|---|
-| **Versus** (default) | Every player has **their own copy of the same board** | Each player fills their own squares | **First line.** Play continues; later placements are tracked (Alex 1st on floor 18, Sam 2nd on floor 23, …) |
+| **Versus** (default) | Every player has **their own copy of the same board** | Each player fills their own squares | **First line.** Play continues; later placements are tracked (Alex 1st on floor 18, Sam 2nd on floor 23, …). If the run ends with no line, whoever has the most squares wins. Ties go to whoever reached that count first |
 | **Lockout** | **One shared board.** A square takes the color of the player who got it | The **first** player to complete a goal gets the square, and it's **locked** for everyone else | **First line, or a clinch** (section 4.3.1). If the run ends with neither, whoever has the most squares wins. Ties go to whoever reached that count first |
 | **Team** | **One shared board.** A square takes the color of the player who completed it | **Any one player** completing the goal fills it for the team | Cooperative. The result is squares filled, lines made, and the floor where the first line was made |
 

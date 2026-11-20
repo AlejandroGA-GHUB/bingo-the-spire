@@ -197,10 +197,13 @@ public sealed class BoardState
     public IReadOnlyList<ClaimResolved> Results =>
         _claims.Values.OrderBy(r => r.Order).ToList();
 
-    /// <summary>The run ended. Lockout with no line and no clinch goes to the most squares.</summary>
+    /// <summary>
+    /// The run ended. In Versus and Lockout, a co-op game with no winner yet (no line, no clinch)
+    /// goes to the most squares. Team has no winner, and solo has nobody to beat.
+    /// </summary>
     public void Finish(RunPosition? at)
     {
-        if (Mode != BingoMode.Lockout || Winner != null || _filled.Count == 0)
+        if (Mode == BingoMode.Team || _players.Count < 2 || Winner != null || _filled.Count == 0)
         {
             return;
         }
