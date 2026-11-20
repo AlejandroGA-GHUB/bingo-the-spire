@@ -44,13 +44,39 @@ internal static class BingoHotkey
         ActiveKey = key;
     }
 
+    /// <summary>
+    /// NHotkeyManager.PushHotkeyPressedBinding(string, Action): beta adds an optional third
+    /// parameter, which changes the compiled signature, so it's found by name and its first two
+    /// parameters, and any extra ones get their defaults.
+    /// </summary>
+    private static readonly System.Reflection.MethodInfo? PushBinding = typeof(NHotkeyManager)
+        .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+        .FirstOrDefault(m => m.Name == "PushHotkeyPressedBinding"
+            && m.GetParameters() is { Length: >= 2 } p
+            && p[0].ParameterType == typeof(string) && p[1].ParameterType == typeof(Action)
+            && p.Skip(2).All(x => x.HasDefaultValue));
+
     /// <summary>Hooks the action to <paramref name="toggle"/>. The game clears all hotkeys when a run starts, so call this per run.</summary>
     public static void Bind(Action toggle)
     {
-        if (ActiveKey != null)
+        if (ActiveKey == null || NHotkeyManager.Instance is not { } manager)
         {
-            NHotkeyManager.Instance?.PushHotkeyPressedBinding(ActionName, toggle);
+            return;
         }
+        if (PushBinding == null)
+        {
+            BingoLog.Warn("this game version's hotkey manager is different; the board hotkey is off (the bingo icon still works)");
+            return;
+        }
+        var parameters = PushBinding.GetParameters();
+        var args = new object?[parameters.Length];
+        args[0] = ActionName;
+        args[1] = toggle;
+        for (var i = 2; i < args.Length; i++)
+        {
+            args[i] = parameters[i].DefaultValue;
+        }
+        PushBinding.Invoke(manager, args);
     }
 
     /// <summary>Name of an action already bound to the plain key (no modifiers), if any.</summary>
