@@ -10,6 +10,7 @@ namespace BingoTheSpire.Core.Events;
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "t")]
 [JsonDerivedType(typeof(RunAttached), nameof(RunAttached))]
 [JsonDerivedType(typeof(RunEnded), nameof(RunEnded))]
+[JsonDerivedType(typeof(GameSaved), nameof(GameSaved))]
 [JsonDerivedType(typeof(ActEntered), nameof(ActEntered))]
 [JsonDerivedType(typeof(RoomEntered), nameof(RoomEntered))]
 [JsonDerivedType(typeof(CombatStarting), nameof(CombatStarting))]
@@ -73,12 +74,22 @@ public sealed record PlayerInfo(ulong PlayerId, string CharacterId);
 // ---- Run and map -------------------------------------------------------------------------
 
 /// <summary>The mod started following a run: a new run, or one loaded with Continue.</summary>
+/// <param name="StartTime">
+/// When the run was first started (the game's own value, kept across Continue), or 0 if unknown.
+/// Seed and start time together tell runs apart, so a Continue finds its saved bingo progress.
+/// </param>
 public sealed record RunAttached(
     string Seed, string GameMode, bool IsCustom, int Ascension,
-    IReadOnlyList<PlayerInfo> Players, ulong? LocalPlayerId) : GameEvent;
+    IReadOnlyList<PlayerInfo> Players, ulong? LocalPlayerId, long StartTime = 0) : GameEvent;
 
 /// <summary>The run is over: won, lost, or abandoned (abandoning counts as a loss).</summary>
 public sealed record RunEnded(bool Victory, bool Abandoned) : GameEvent;
+
+/// <summary>
+/// The game saved the run (or, for a co-op client, reached the point where the host saves it).
+/// Continue resumes from here, so it's the checkpoint bingo progress is restored to.
+/// </summary>
+public sealed record GameSaved : GameEvent;
 
 public sealed record ActEntered(int ActIndex, string ActId) : GameEvent;
 

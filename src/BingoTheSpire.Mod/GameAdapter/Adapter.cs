@@ -128,9 +128,29 @@ internal static class Adapter
                 IsCustom: IsCustomRun(runState),
                 Ascension: runState.AscensionLevel,
                 Players: runState.Players.Select(p => new PlayerInfo(p.NetId, p.Character.Id.Entry)).ToList(),
-                LocalPlayerId: LocalContext.NetId));
+                LocalPlayerId: LocalContext.NetId,
+                StartTime: RunStartTime()));
         });
     }
+
+    private static readonly FieldInfo? StartTimeField =
+        typeof(RunManager).GetField("_startTime", BindingFlags.NonPublic | BindingFlags.Instance);
+
+    private static readonly PropertyInfo? StateProperty =
+        typeof(RunManager).GetProperty("State", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+
+    /// <summary>Whether the game's current run is <paramref name="run"/>. True if that can't be checked.</summary>
+    private static bool IsCurrentRun(RunState run) =>
+        StateProperty?.PropertyType != typeof(RunState) || ReferenceEquals(StateProperty.GetValue(RunManager.Instance), run);
+
+    /// <summary>
+    /// When the run was first started, kept by the game across Continue. It's a private field
+    /// (same name on main and beta), so it's read by name; 0 if it's missing.
+    /// </summary>
+    private static long RunStartTime() =>
+        StartTimeField?.FieldType == typeof(long) && RunManager.Instance is { } manager
+            ? (long)StartTimeField.GetValue(manager)!
+            : 0;
 
     /// <summary>
     /// Main marks custom runs with GameMode "Custom"; beta has a separate IsCustomGame flag instead.
@@ -215,6 +235,19 @@ internal static class Adapter
     }
 
     /// <summary>The game can call its end-of-run code more than once; report each run's end once.</summary>
+    /// <summary>
+    /// The game is saving the current run. Co-op clients reach this too (only the host writes the
+    /// file), at the same points, so every player gets the same checkpoints. Saves made while no
+    /// run of ours is live, e.g. when a new run is being set up, are ignored.
+    /// </summary>
+    public static void OnGameSaving()
+    {
+        if (_run != null && !_runEnded && IsCurrentRun(_run))
+        {
+            Publish(new GameSaved());
+        }
+    }
+
     public static void OnRunEnded(bool isVictory)
     {
         if (_runEnded || _run == null)

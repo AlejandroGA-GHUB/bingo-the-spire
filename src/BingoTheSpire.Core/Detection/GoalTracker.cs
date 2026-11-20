@@ -38,6 +38,13 @@ public sealed class GoalTracker
 
     public bool IsCompleted(int square, ulong playerId) => _squares[square].Done.Contains(playerId);
 
+    /// <summary>The latest progress on every unfinished square for a player, e.g. to draw a restored board.</summary>
+    public IReadOnlyList<GoalProgress> ProgressOf(ulong playerId) =>
+        _squares.Select((s, i) => (s, i))
+            .Where(x => !x.s.Done.Contains(playerId) && x.s.LastProgress.ContainsKey(playerId))
+            .Select(x => new GoalProgress(x.i, playerId, x.s.LastProgress[playerId].Current, x.s.LastProgress[playerId].Target))
+            .ToList();
+
     public void Handle(GameEvent evt)
     {
         _context.Before(evt);
@@ -64,7 +71,7 @@ public sealed class GoalTracker
 
     private sealed class Square(GoalTracker tracker, int index, string goalId, IDetector detector) : IDetectionSink
     {
-        private readonly Dictionary<ulong, (int Current, int Target)> _lastProgress = new();
+        public Dictionary<ulong, (int Current, int Target)> LastProgress { get; } = new();
 
         public string GoalId { get; } = goalId;
 
@@ -88,11 +95,11 @@ public sealed class GoalTracker
         public void Progress(ulong playerId, int current, int target)
         {
             if (Done.Contains(playerId)
-                || (_lastProgress.TryGetValue(playerId, out var last) && last == (current, target)))
+                || (LastProgress.TryGetValue(playerId, out var last) && last == (current, target)))
             {
                 return;
             }
-            _lastProgress[playerId] = (current, target);
+            LastProgress[playerId] = (current, target);
             tracker.Progressed?.Invoke(new GoalProgress(index, playerId, current, target));
         }
     }

@@ -80,6 +80,19 @@ internal sealed class BingoOverlay
         session.LineDone += OnLine;
         session.Tracker.Progressed += OnProgress;
         _board.Build(session.Board);
+
+        // A continued run arrives with progress already restored: draw it as it stands, no toasts.
+        foreach (var square in session.FilledBy(localPlayer))
+        {
+            if (session.CompletionOf(square, localPlayer) is { } c)
+            {
+                _board.SetEvidence(square, $"{c.Evidence}{Where(c.At)}");
+            }
+        }
+        foreach (var progress in session.Tracker.ProgressOf(localPlayer))
+        {
+            _board.SetProgress(progress.Square, progress.Current, progress.Target);
+        }
         Refresh();
     }
 

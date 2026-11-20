@@ -136,6 +136,14 @@ internal sealed class BoardPanel
         });
     }
 
+    public void SetEvidence(int index, string evidence)
+    {
+        if (index < _cells.Count)
+        {
+            _cells[index].Evidence = evidence;
+        }
+    }
+
     public void MarkFilled(int index, string evidence)
     {
         if (index >= _cells.Count)

@@ -225,7 +225,10 @@ The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (version 1, 45 goals
 
 ## 8. Saving, continuing and history
 
-- **Run state:** settings, board hash, claims, and detectors' in-progress state (e.g. "7/10 cards this turn") are saved to a small file in the mod's data folder, keyed by the run's seed and start time, and saved after every claim and at every room change. **Continue** reloads it. If the file is missing or doesn't match, the board is rebuilt from the seed, with no claims.
+- **Run state:** each run in progress has a **journal**: the run's events, written as they happen to a small file in the mod's data folder (`runs/`), named by the run's seed and start time and tagged with the board's hash.
+  - The mod marks every point where the game saves the run. **Continue** resumes from the game's last save and plays everything after it again, so the mod replays the journal **up to that last save** into a fresh board. That restores every square, line and in-progress counter (e.g. "7/10 cards this turn") exactly, without saving each goal's state separately.
+  - If the journal is missing, unreadable or for a different board, the board starts fresh from the seed.
+  - The journal is deleted when the run ends. Leftover journals (e.g. a run abandoned from the main menu) are removed after 30 days untouched.
 - **History:** one tiny line per finished bingo run (date, mode, seed and board code, characters, result, floor and time of each line, squares filled), stored as JSON lines in `bingo_history.jsonl` in the mod's data folder.
 - **History screen:** the in-game panel lists past runs and personal bests (fastest first line by floor and by time, most squares in Team) and **shows the folder path**, with a button to open it, for anyone curious.
 - The data folder is `bingo_the_spire/` inside the game's user data folder (Godot `user://`; on Windows `%APPDATA%\SlayTheSpire2\bingo_the_spire`).

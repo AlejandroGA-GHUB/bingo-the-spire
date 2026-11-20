@@ -21,6 +21,7 @@ public sealed class BingoSession
     private readonly IReadOnlyList<int[]> _lines;
     private readonly Dictionary<ulong, HashSet<int>> _filled = new();
     private readonly Dictionary<ulong, List<int>> _completedLines = new();
+    private readonly Dictionary<(int Square, ulong Player), GoalCompletion> _completions = new();
 
     public BingoSession(BingoBoard board, GoalList goals, Action<string, Exception>? onDetectorError = null)
     {
@@ -44,6 +45,10 @@ public sealed class BingoSession
     public IReadOnlyList<int> LinesBy(ulong playerId) =>
         _completedLines.TryGetValue(playerId, out var lines) ? lines : [];
 
+    /// <summary>How and where a player completed a square, if they did.</summary>
+    public GoalCompletion? CompletionOf(int square, ulong playerId) =>
+        _completions.GetValueOrDefault((square, playerId));
+
     public void Handle(GameEvent evt) => Tracker.Handle(evt);
 
     private void OnCompleted(GoalCompletion completion)
@@ -57,6 +62,7 @@ public sealed class BingoSession
         {
             return;
         }
+        _completions[(completion.Square, player)] = completion;
         Filled?.Invoke(new SquareFilled(completion.Square, player, completion));
 
         if (!_completedLines.TryGetValue(player, out var done))

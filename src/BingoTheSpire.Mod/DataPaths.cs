@@ -8,4 +8,7 @@ internal static class DataPaths
     public static string Root => ProjectSettings.GlobalizePath("user://bingo_the_spire");
 
     public static string Recordings => System.IO.Path.Combine(Root, "recordings");
+
+    /// <summary>One journal per run in progress, so Continue can bring bingo progress back.</summary>
+    public static string Runs => System.IO.Path.Combine(Root, "runs");
 }
