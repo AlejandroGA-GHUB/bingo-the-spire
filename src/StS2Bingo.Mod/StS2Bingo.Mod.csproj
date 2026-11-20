@@ -9,6 +9,8 @@
     <AssemblyName>StS2Bingo</AssemblyName>
     <RootNamespace>StS2Bingo.Mod</RootNamespace>
     <ModId>StS2Bingo</ModId>
+    <!-- Keep in sync with "version" in StS2Bingo.json. -->
+    <Version>0.1.0</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <!-- Deploy into the game's mods folder after building, when the game is installed. Disable with -p:DeployToGame=false. -->
