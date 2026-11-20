@@ -25,23 +25,41 @@ internal static class Adapter
     private static CombatHookListener? _combatListener;
     private static bool _listenersMissingLogged;
 
+    private static readonly List<SourceStatus> HookSources = new();
+    private static readonly Dictionary<string, SourceStatus> PatchSources = new();
+
     private static RunState? _run;
     private static CombatState? _combat;
+    private static bool _inCombat;
+    private static bool _runEnded;
 
     /// <summary>Raised after a new run is attached, before its <see cref="RunAttached"/> event is published.</summary>
     public static event Action? RunAttaching;
 
-    public static IReadOnlyList<SourceStatus> Sources { get; private set; } = Array.Empty<SourceStatus>();
+    /// <summary>Every event source (hooks and patches) and whether it works on this game version.</summary>
+    public static IReadOnlyList<SourceStatus> Sources => HookSources.Concat(PatchSources.Values).ToList();
 
     public static void Install(EventBus bus)
     {
         _bus = bus;
-        Sources = BuildSourceReport();
+        HookSources.AddRange(BuildHookReport());
         ModHelper.SubscribeForRunStateHooks(ModEntry.ModId + ".run", OnIterateRunListeners);
         ModHelper.SubscribeForCombatStateHooks(ModEntry.ModId + ".combat", OnIterateCombatListeners);
+        LogSummary("hooks", HookSources);
+    }
 
-        var missing = Sources.Where(s => !s.Connected).ToList();
-        BingoLog.Info($"hooks: {Sources.Count - missing.Count}/{Sources.Count} connected"
+    /// <summary>Called by each Harmony patch's Prepare: records whether its target exists on this version.</summary>
+    public static void ReportPatch(string source, bool found, params string[] events)
+    {
+        PatchSources[source] = new SourceStatus(source, found, found ? null : "target method not found", events);
+    }
+
+    public static void LogPatchSummary() => LogSummary("patches", PatchSources.Values.ToList());
+
+    private static void LogSummary(string what, IReadOnlyList<SourceStatus> sources)
+    {
+        var missing = sources.Where(s => !s.Connected).ToList();
+        BingoLog.Info($"{what}: {sources.Count - missing.Count}/{sources.Count} connected"
             + (missing.Count == 0 ? "" : "; not available: " + string.Join(", ", missing.Select(s => $"{s.Source} ({s.Reason})"))));
     }
 
@@ -99,6 +117,8 @@ internal static class Adapter
         }
         _run = runState;
         _combat = null;
+        _inCombat = false;
+        _runEnded = false;
         Safe("RunAttached", () =>
         {
             RunAttaching?.Invoke();
@@ -139,7 +159,7 @@ internal static class Adapter
         {
             return null;
         }
-        return new RunPosition(_run.CurrentActIndex, _run.ActFloor, _run.CurrentRoomCount, _combat?.RoundNumber);
+        return new RunPosition(_run.CurrentActIndex, _run.ActFloor, _run.TotalFloor, _inCombat ? _combat?.RoundNumber : null);
     }
 
     /// <summary>Runs a hook body; any exception is logged once per hook and never reaches the game.</summary>
@@ -175,11 +195,14 @@ internal static class Adapter
 
     public static void OnRoomEntered(AbstractRoom room)
     {
-        if (room is not CombatRoom)
-        {
-            _combat = null;
-        }
+        _inCombat = false;
         Publish(new RoomEntered(room.RoomType.ToString(), room.ModelId?.Entry));
+    }
+
+    public static void OnCombatStarting()
+    {
+        _inCombat = true;
+        Publish(new CombatStarting());
     }
 
     public static void OnCombatWon(CombatRoom room) =>
@@ -188,7 +211,18 @@ internal static class Adapter
     public static void OnCombatEnded(CombatRoom room)
     {
         Publish(new CombatEnded(room.RoomType.ToString(), room.Encounter?.Id.Entry));
-        _combat = null;
+        _inCombat = false;
+    }
+
+    /// <summary>The game can call its end-of-run code more than once; report each run's end once.</summary>
+    public static void OnRunEnded(bool isVictory)
+    {
+        if (_runEnded || _run == null)
+        {
+            return;
+        }
+        _runEnded = true;
+        Publish(new RunEnded(isVictory, RunManager.Instance.IsAbandoned));
     }
 
     public static void OnCardPlayed(CardPlay play) =>
@@ -197,7 +231,7 @@ internal static class Adapter
             play.Resources.EnergySpent, play.Resources.StarsSpent, play.IsAutoPlay, KindOf(play.Target)));
 
     public static void OnBlockGained(Creature creature, decimal amount, CardModel? cardSource) =>
-        Publish(new BlockGained(creature.Player?.NetId, KindOf(creature), ToInt(amount), cardSource?.Id.Entry));
+        Publish(new BlockGained(creature.Player?.NetId, KindOf(creature), creature.CombatId, ToInt(amount), cardSource?.Id.Entry));
 
     public static void OnDamageGiven(Creature? dealer, DamageResult result, Creature target, CardModel? cardSource) =>
         Publish(new DamageDealt(
@@ -206,6 +240,7 @@ internal static class Adapter
             TargetKind: KindOf(target),
             TargetPlayerId: target.Player?.NetId,
             TargetId: target.Monster?.Id.Entry,
+            TargetCombatId: target.CombatId,
             Unblocked: result.UnblockedDamage,
             Blocked: result.BlockedDamage,
             Overkill: result.OverkillDamage,
@@ -239,6 +274,7 @@ internal static class Adapter
             OwnerKind: KindOf(owner),
             OwnerPlayerId: owner?.Player?.NetId,
             OwnerId: owner?.Monster?.Id.Entry,
+            OwnerCombatId: owner?.CombatId,
             ApplierPlayerId: applier?.Player?.NetId,
             CardId: cardSource?.Id.Entry));
     }
@@ -269,7 +305,7 @@ internal static class Adapter
     /// version. If the game changed the signature, the runtime treats our method as a new one and
     /// it would never be called.
     /// </summary>
-    private static IReadOnlyList<SourceStatus> BuildSourceReport()
+    private static IReadOnlyList<SourceStatus> BuildHookReport()
     {
         var report = new List<SourceStatus>();
         foreach (var type in new[] { typeof(RunHookListener), typeof(CombatHookListener) })

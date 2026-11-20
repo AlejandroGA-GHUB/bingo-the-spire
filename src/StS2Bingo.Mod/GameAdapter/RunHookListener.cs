@@ -34,7 +34,7 @@ public sealed class RunHookListener : HookListener
     [Emits(nameof(CombatStarting))]
     public override Task BeforeCombatStart()
     {
-        Adapter.Safe(nameof(BeforeCombatStart), () => Adapter.Publish(new CombatStarting()));
+        Adapter.Safe(nameof(BeforeCombatStart), Adapter.OnCombatStarting);
         return Task.CompletedTask;
     }
 

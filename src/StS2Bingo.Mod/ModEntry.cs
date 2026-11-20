@@ -39,7 +39,8 @@ public static class ModEntry
             Adapter.Install(Events);
 
             Harmony = new Harmony(ModId);
-            Harmony.PatchAll(typeof(ModEntry).Assembly);
+            ApplyPatches(Harmony);
+            Adapter.LogPatchSummary();
 
             BingoLog.Info($"v{Version} loaded. Data folder: {DataPaths.Root}");
         }
@@ -47,6 +48,30 @@ public static class ModEntry
         {
             // Never take the game down with us: log and leave bingo off.
             BingoLog.Error($"failed to initialize, bingo is off for this session:\n{ex}");
+        }
+    }
+
+    /// <summary>
+    /// Applies each patch class on its own, so one patch failing (e.g. after a game update) only
+    /// loses that patch's events instead of every patch after it.
+    /// </summary>
+    private static void ApplyPatches(Harmony harmony)
+    {
+        foreach (var type in typeof(ModEntry).Assembly.GetTypes())
+        {
+            if (type.GetCustomAttributes(typeof(HarmonyPatch), inherit: false).Length == 0)
+            {
+                continue;
+            }
+            try
+            {
+                harmony.CreateClassProcessor(type).Patch();
+            }
+            catch (Exception ex)
+            {
+                Adapter.ReportPatch(type.Name, false);
+                BingoLog.Error($"patch {type.Name} failed and is skipped: {ex.Message}");
+            }
         }
     }
 }

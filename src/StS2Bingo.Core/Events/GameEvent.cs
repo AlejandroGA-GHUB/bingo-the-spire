@@ -9,6 +9,7 @@ namespace StS2Bingo.Core.Events;
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "t")]
 [JsonDerivedType(typeof(RunAttached), nameof(RunAttached))]
+[JsonDerivedType(typeof(RunEnded), nameof(RunEnded))]
 [JsonDerivedType(typeof(ActEntered), nameof(ActEntered))]
 [JsonDerivedType(typeof(RoomEntered), nameof(RoomEntered))]
 [JsonDerivedType(typeof(CombatStarting), nameof(CombatStarting))]
@@ -53,9 +54,9 @@ public abstract record GameEvent
 
 /// <param name="Act">0-based act index.</param>
 /// <param name="ActFloor">Floor within the act.</param>
-/// <param name="RoomCount">Rooms visited so far in the run.</param>
-/// <param name="Round">Combat round, when in combat.</param>
-public sealed record RunPosition(int Act, int ActFloor, int RoomCount, int? Round);
+/// <param name="Floor">Floor counted across the whole run.</param>
+/// <param name="Round">Combat round, only while a combat is running.</param>
+public sealed record RunPosition(int Act, int ActFloor, int Floor, int? Round);
 
 /// <summary>Who caused or received something. Players are told apart by <c>PlayerId</c>.</summary>
 public static class CreatureKind
@@ -75,6 +76,9 @@ public sealed record PlayerInfo(ulong PlayerId, string CharacterId);
 public sealed record RunAttached(
     string Seed, string GameMode, bool IsCustom, int Ascension,
     IReadOnlyList<PlayerInfo> Players, ulong? LocalPlayerId) : GameEvent;
+
+/// <summary>The run is over: won, lost, or abandoned (abandoning counts as a loss).</summary>
+public sealed record RunEnded(bool Victory, bool Abandoned) : GameEvent;
 
 public sealed record ActEntered(int ActIndex, string ActId) : GameEvent;
 
@@ -118,12 +122,16 @@ public sealed record Shuffled(ulong PlayerId) : GameEvent;
 
 // ---- Damage, Block, HP -------------------------------------------------------------------
 
+// Creatures in a combat have a CombatId that is unique within that combat, so two enemies of the
+// same kind (e.g. four Phantasmal Gardeners) can be told apart. Ids restart in every combat.
+
 /// <param name="PlayerId">Set when the creature gaining Block is a player.</param>
-public sealed record BlockGained(ulong? PlayerId, string CreatureKind, int Amount, string? CardId) : GameEvent;
+public sealed record BlockGained(ulong? PlayerId, string CreatureKind, uint? CombatId, int Amount, string? CardId) : GameEvent;
 
 /// <param name="Overkill">Damage beyond what was needed to kill. 0 on an exact kill.</param>
+/// <remarks>A card's effects (damage, Block, powers) arrive before its <see cref="CardPlayed"/>.</remarks>
 public sealed record DamageDealt(
-    ulong? DealerPlayerId, string DealerKind, string TargetKind, ulong? TargetPlayerId, string? TargetId,
+    ulong? DealerPlayerId, string DealerKind, string TargetKind, ulong? TargetPlayerId, string? TargetId, uint? TargetCombatId,
     int Unblocked, int Blocked, int Overkill, bool TargetDied, string? CardId) : GameEvent;
 
 public sealed record DamageTaken(ulong PlayerId, int Unblocked, int Blocked, string DealerKind) : GameEvent;
@@ -134,7 +142,7 @@ public sealed record HpChanged(ulong PlayerId, int Delta, int CurrentHp, int Max
 /// <param name="Delta">Change in amount (negative when reduced).</param>
 public sealed record PowerChanged(
     string PowerId, string PowerType, int Delta, int Amount,
-    string OwnerKind, ulong? OwnerPlayerId, string? OwnerId, ulong? ApplierPlayerId, string? CardId) : GameEvent;
+    string OwnerKind, ulong? OwnerPlayerId, string? OwnerId, uint? OwnerCombatId, ulong? ApplierPlayerId, string? CardId) : GameEvent;
 
 public sealed record OrbChanneled(ulong PlayerId, string OrbId) : GameEvent;
 

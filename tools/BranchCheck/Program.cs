@@ -75,10 +75,38 @@ static int CheckBranch(string modDll, string refsDir)
                 }
             }
         }
+
+        // Harmony patches: their TargetMethod() must find a method in this branch's game code.
+        // Read the [PatchTarget] attributes as data, so no game code has to run.
+        const BindingFlags all = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+        foreach (var type in types)
+        {
+            var targets = type.CustomAttributes.Where(a => a.AttributeType.Name == "PatchTargetAttribute").ToList();
+            if (targets.Count == 0)
+            {
+                continue;
+            }
+            var found = targets.Any(a =>
+            {
+                var declaring = (Type)a.ConstructorArguments[0].Value!;
+                var name = (string)a.ConstructorArguments[1].Value!;
+                var parameters = ((IEnumerable<CustomAttributeTypedArgument>)a.ConstructorArguments[2].Value!)
+                    .Select(p => (Type)p.Value!).ToArray();
+                return declaring.GetMethod(name, all, null, parameters, null) != null;
+            });
+            if (found)
+            {
+                connected++;
+            }
+            else
+            {
+                problems.Add($"{type.Name}: no patch target exists on this branch");
+            }
+        }
     }
     catch (Exception ex)
     {
-        problems.Add($"check failed: {ex.GetType().Name}: {ex.Message}");
+        problems.Add($"check failed: {(ex.InnerException ?? ex).GetType().Name}: {(ex.InnerException ?? ex).Message}");
     }
     finally
     {
@@ -86,7 +114,7 @@ static int CheckBranch(string modDll, string refsDir)
     }
 
     var version = ReadVersion(refsDir);
-    Console.WriteLine($"[{Path.GetFileName(refsDir)}{version}] {connected} hooks connected, {problems.Count} problem(s)");
+    Console.WriteLine($"[{Path.GetFileName(refsDir)}{version}] {connected} hooks and patches connected, {problems.Count} problem(s)");
     foreach (var problem in problems)
     {
         Console.WriteLine("  - " + problem);

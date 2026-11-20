@@ -21,7 +21,7 @@ public class EventRecorderTests
 
         recorder.WriteHeader(Header());
         recorder.Record(new CardPlayed(1, "STRIKE_IRONCLAD", "Attack", 1, 0, false, CreatureKind.Enemy) { Seq = 1 });
-        recorder.Record(new BlockGained(1, CreatureKind.Player, 5, "DEFEND_IRONCLAD") { Seq = 2 });
+        recorder.Record(new BlockGained(1, CreatureKind.Player, null, 5, "DEFEND_IRONCLAD") { Seq = 2 });
 
         var lines = sw.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(3, lines.Length);
@@ -38,7 +38,7 @@ public class EventRecorderTests
         {
             new RunAttached("7K2M9QX4ZB1C", "Standard", false, 0, new[] { new PlayerInfo(1, "IRONCLAD") }, 1) { Seq = 1 },
             new RoomEntered("Elite", "GREMLIN_LEADER") { Seq = 2, At = new RunPosition(0, 6, 6, null) },
-            new DamageDealt(1, CreatureKind.Player, CreatureKind.Enemy, null, "GREMLIN_LEADER", 12, 3, 0, true, "BASH") { Seq = 3, At = new RunPosition(0, 6, 6, 4) },
+            new DamageDealt(1, CreatureKind.Player, CreatureKind.Enemy, null, "GREMLIN_LEADER", 3u, 12, 3, 0, true, "BASH") { Seq = 3, At = new RunPosition(0, 6, 6, 4) },
         };
         using (var recorder = new EventRecorder(sw))
         {
@@ -66,7 +66,7 @@ public class EventRecorderTests
         var sw = new StringWriter();
         using var recorder = new EventRecorder(sw);
 
-        recorder.Record(new BlockGained(null, CreatureKind.Enemy, 8, null));
+        recorder.Record(new BlockGained(null, CreatureKind.Enemy, 2u, 8, null));
 
         Assert.DoesNotContain("cardId", sw.ToString());
         Assert.DoesNotContain("playerId", sw.ToString());
