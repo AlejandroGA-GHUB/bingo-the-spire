@@ -5,29 +5,32 @@ using BingoTheSpire.Core.Goals;
 
 namespace BingoTheSpire.Core.Session;
 
-public sealed record SquareFilled(int Square, ulong PlayerId, GoalCompletion Completion);
-
-/// <param name="Line">Index into <see cref="BoardRules.Lines"/>: rows, then columns, then the two diagonals.</param>
-/// <param name="Ordinal">1 for the player's first line (their bingo), 2 for the second, and so on.</param>
-public sealed record LineCompleted(int Line, ulong PlayerId, int Ordinal, RunPosition? At, long Seq);
-
 /// <summary>
-/// One run's bingo, solo or Versus: every player fills their own copy of the board, and each
-/// player's lines are tracked in the order they're made (spec sections 4.2 and 4.3).
-/// Lockout and Team, where the host decides who gets a square, build on this later.
+/// One run's bingo on one player's game (spec sections 4 and 7):
+/// <list type="number">
+/// <item>The goal tracker turns game events into detected goals.</item>
+/// <item>Detections for the players this game speaks for become <see cref="Claim"/>s.</item>
+/// <item>The authority (the solo game, or the co-op host) decides each claim, giving a
+///   <see cref="ClaimResolved"/> that every game applies to its <see cref="BoardState"/> in order.</item>
+/// </list>
+/// Results are fed back through <see cref="Handle"/> like game events, so a journal of everything
+/// handled can be replayed to restore the session exactly.
 /// </summary>
 public sealed class BingoSession
 {
-    private readonly IReadOnlyList<int[]> _lines;
-    private readonly Dictionary<ulong, HashSet<int>> _filled = new();
-    private readonly Dictionary<ulong, List<int>> _completedLines = new();
-    private readonly Dictionary<(int Square, ulong Player), GoalCompletion> _completions = new();
+    private readonly Func<ulong, bool> _claimsFor;
+    private long _lastSeq;
 
-    public BingoSession(BingoBoard board, GoalList goals, Action<string, Exception>? onDetectorError = null)
+    /// <param name="isAuthority">True for solo and the co-op host: decides claims itself.</param>
+    /// <param name="claimsFor">Whose detections this game claims. In co-op each game claims only for its own player; null claims for everyone (solo, tests).</param>
+    public BingoSession(BingoBoard board, GoalList goals, bool isAuthority = true, Func<ulong, bool>? claimsFor = null,
+        Action<string, Exception>? onDetectorError = null)
     {
         Board = board;
+        IsAuthority = isAuthority;
+        _claimsFor = claimsFor ?? (_ => true);
         Tracker = new GoalTracker(board, goals, onDetectorError);
-        _lines = BoardRules.Lines(board.Size);
+        State = new BoardState(board);
         Tracker.Completed += OnCompleted;
     }
 
@@ -35,47 +38,75 @@ public sealed class BingoSession
 
     public GoalTracker Tracker { get; }
 
-    public event Action<SquareFilled>? Filled;
+    public BoardState State { get; }
 
-    public event Action<LineCompleted>? LineDone;
+    public bool IsAuthority { get; }
 
-    public IReadOnlySet<int> FilledBy(ulong playerId) =>
-        _filled.TryGetValue(playerId, out var set) ? set : new HashSet<int>();
+    /// <summary>
+    /// True while a journal is replayed. Detections then make no claims: the journal already has
+    /// the results they led to.
+    /// </summary>
+    public bool Replaying { get; set; }
 
-    public IReadOnlyList<int> LinesBy(ulong playerId) =>
-        _completedLines.TryGetValue(playerId, out var lines) ? lines : [];
+    /// <summary>Co-op client: a claim to send to the host.</summary>
+    public event Action<Claim>? Claimed;
 
-    /// <summary>How and where a player completed a square, if they did.</summary>
-    public GoalCompletion? CompletionOf(int square, ulong playerId) =>
-        _completions.GetValueOrDefault((square, playerId));
+    /// <summary>Authority: a decision made. Record it (journal) and, in co-op, send it to everyone. It's applied right after.</summary>
+    public event Action<ClaimResolved>? Resolved;
 
-    public void Handle(GameEvent evt) => Tracker.Handle(evt);
+    public void Handle(GameEvent evt)
+    {
+        _lastSeq = Math.Max(_lastSeq, evt.Seq);
+        switch (evt)
+        {
+            case ClaimResolved result:
+                State.Apply(result);
+                return;
+            case RunAttached run:
+                State.SetPlayers(run.Players.Select(p => p.PlayerId));
+                break;
+        }
+        Tracker.Handle(evt);
+        if (evt is RunEnded)
+        {
+            State.Finish(evt.At);
+        }
+    }
+
+    /// <summary>Authority: decides a claim (its own player's, or one a co-op client sent) and applies the result.</summary>
+    public ClaimResolved? Decide(Claim claim)
+    {
+        if (!IsAuthority)
+        {
+            throw new InvalidOperationException("Only the authority decides claims.");
+        }
+        var result = State.Decide(claim, _lastSeq);
+        if (result != null)
+        {
+            Resolved?.Invoke(result);
+            State.Apply(result);
+        }
+        return result;
+    }
 
     private void OnCompleted(GoalCompletion completion)
     {
-        var player = completion.PlayerId;
-        if (!_filled.TryGetValue(player, out var filled))
-        {
-            _filled[player] = filled = [];
-        }
-        if (!filled.Add(completion.Square))
+        if (Replaying || !_claimsFor(completion.PlayerId))
         {
             return;
         }
-        _completions[(completion.Square, player)] = completion;
-        Filled?.Invoke(new SquareFilled(completion.Square, player, completion));
-
-        if (!_completedLines.TryGetValue(player, out var done))
+        var claim = new Claim(completion.Square, completion.GoalId, completion.PlayerId, completion.Evidence, completion.At);
+        if (!State.CouldAccept(claim))
         {
-            _completedLines[player] = done = [];
+            return; // already ours, or someone else's in Lockout and Team
         }
-        for (var i = 0; i < _lines.Count; i++)
+        if (IsAuthority)
         {
-            if (!done.Contains(i) && _lines[i].Contains(completion.Square) && _lines[i].All(filled.Contains))
-            {
-                done.Add(i);
-                LineDone?.Invoke(new LineCompleted(i, player, done.Count, completion.At, completion.Seq));
-            }
+            Decide(claim);
+        }
+        else
+        {
+            Claimed?.Invoke(claim);
         }
     }
 }

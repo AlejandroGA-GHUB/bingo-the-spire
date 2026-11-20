@@ -11,6 +11,7 @@ namespace BingoTheSpire.Core.Events;
 [JsonDerivedType(typeof(RunAttached), nameof(RunAttached))]
 [JsonDerivedType(typeof(RunEnded), nameof(RunEnded))]
 [JsonDerivedType(typeof(GameSaved), nameof(GameSaved))]
+[JsonDerivedType(typeof(ClaimResolved), nameof(ClaimResolved))]
 [JsonDerivedType(typeof(ActEntered), nameof(ActEntered))]
 [JsonDerivedType(typeof(RoomEntered), nameof(RoomEntered))]
 [JsonDerivedType(typeof(CombatStarting), nameof(CombatStarting))]
@@ -179,3 +180,13 @@ public sealed record RestHealed(ulong PlayerId) : GameEvent;
 public sealed record RestSmithed(ulong PlayerId) : GameEvent;
 
 public sealed record RewardTaken(ulong PlayerId, string RewardKind) : GameEvent;
+
+// ---- Bingo -------------------------------------------------------------------------------
+
+/// <summary>
+/// The authority's decision on a claim (the solo game, or the co-op host). Not a game event: it's
+/// kept in the same stream so the journal replays results along with the events behind them.
+/// </summary>
+/// <param name="Order">The authority's numbering. Everyone applies results in this order.</param>
+/// <param name="Accepted">False when the square was already taken (Lockout and Team).</param>
+public sealed record ClaimResolved(long Order, int Square, string GoalId, ulong PlayerId, bool Accepted, string Evidence) : GameEvent;

@@ -70,14 +70,21 @@ internal sealed class BingoRuntime
                 GameMode: run.GameMode,
                 CharacterIds: run.Players.Select(p => p.CharacterId).ToList());
             var board = BoardBuilder.Build(BuiltInGoals.List, request, capabilities);
+            var local = LocalPlayerId;
             var session = new BingoSession(board, BuiltInGoals.List,
-                (goal, ex) => BingoLog.Error($"detector for '{goal}' failed and is off for this run: {ex}"));
+                isAuthority: true,
+                claimsFor: player => player == local,
+                onDetectorError: (goal, ex) => BingoLog.Error($"detector for '{goal}' failed and is off for this run: {ex}"));
+            session.Resolved += WriteJournal;
 
+            // A Continue: replay the journal. It already holds the results, so nothing is claimed again.
             var kept = LoadJournal(run, board);
+            session.Replaying = true;
             foreach (var evt in kept)
             {
                 session.Handle(evt);
             }
+            session.Replaying = false;
             if (kept.Count > 0)
             {
                 _seqOffset = kept[^1].Seq;
@@ -85,9 +92,12 @@ internal sealed class BingoRuntime
             }
             StartJournal(run, board, kept);
 
-            session.Filled += f => BingoLog.Info(
-                $"square {Cell(board, f.Square)} done by player {f.PlayerId}: \"{board.Squares[f.Square].Text}\" ({f.Completion.Evidence}{Where(f.Completion.At)})");
-            session.LineDone += l => BingoLog.Info(l.Ordinal == 1
+            session.State.Filled += f => BingoLog.Info(
+                $"square {Cell(board, f.Square)} done by player {f.PlayerId}: \"{board.Squares[f.Square].Text}\" ({f.Claim.Evidence}{Where(f.Claim.At)})");
+            session.State.Rejected += r => BingoLog.Info(
+                $"square {Cell(board, r.Square)} was already taken when player {r.PlayerId} completed it");
+            session.State.Won += w => BingoLog.Info($"player {w.PlayerId} wins the bingo ({w.Reason}){Where(w.At)}");
+            session.State.LineDone += l => BingoLog.Info(l.Ordinal == 1
                 ? $"BINGO! player {l.PlayerId} completed {BoardRules.LineName(board.Size, l.Line).ToLowerInvariant()}{Where(l.At)}"
                 : $"line #{l.Ordinal} for player {l.PlayerId}: {BoardRules.LineName(board.Size, l.Line).ToLowerInvariant()}{Where(l.At)}");
 
@@ -96,7 +106,7 @@ internal sealed class BingoRuntime
             if (kept.Count > 0)
             {
                 BingoLog.Info($"continued run: restored {kept.Count} events, "
-                    + string.Join(", ", session.Tracker.Context.Players.Select(p => $"player {p} has {session.FilledBy(p).Count} squares")));
+                    + string.Join(", ", session.State.Players.Select(p => $"player {p} has {session.State.FilledBy(p).Count} squares")));
             }
             SessionStarted?.Invoke(session);
         }
@@ -239,9 +249,13 @@ internal sealed class BingoRuntime
     private static void LogResult(BingoSession session, RunEnded ended)
     {
         var sb = new StringBuilder($"run ended ({(ended.Victory ? "won" : ended.Abandoned ? "abandoned" : "lost")}). Bingo results:");
-        foreach (var player in session.Tracker.Context.Players)
+        foreach (var player in session.State.Players)
         {
-            sb.Append($"\n  player {player}: {session.FilledBy(player).Count}/{session.Board.Squares.Count} squares, {session.LinesBy(player).Count} line(s)");
+            sb.Append($"\n  player {player}: {session.State.FilledBy(player).Count}/{session.Board.Squares.Count} squares, {session.State.LinesFor(player).Count} line(s)");
+        }
+        if (session.State.Winner is { } winner)
+        {
+            sb.Append($"\n  winner: player {winner.PlayerId} ({winner.Reason})");
         }
         BingoLog.Info(sb.ToString());
     }

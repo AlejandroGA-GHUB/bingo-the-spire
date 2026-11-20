@@ -76,15 +76,16 @@ internal sealed class BingoOverlay
         Unbind();
         _session = session;
         _localPlayer = localPlayer;
-        session.Filled += OnFilled;
-        session.LineDone += OnLine;
+        session.State.Filled += OnFilled;
+        session.State.LineDone += OnLine;
         session.Tracker.Progressed += OnProgress;
         _board.Build(session.Board);
 
         // A continued run arrives with progress already restored: draw it as it stands, no toasts.
-        foreach (var square in session.FilledBy(localPlayer))
+        foreach (var square in session.State.FilledFor(localPlayer))
         {
-            if (session.CompletionOf(square, localPlayer) is { } c)
+            var by = session.State.OwnerOf(square) ?? localPlayer;
+            if (session.State.ClaimOf(square, by) is { } c)
             {
                 _board.SetEvidence(square, $"{c.Evidence}{Where(c.At)}");
             }
@@ -102,8 +103,8 @@ internal sealed class BingoOverlay
         {
             return;
         }
-        _session.Filled -= OnFilled;
-        _session.LineDone -= OnLine;
+        _session.State.Filled -= OnFilled;
+        _session.State.LineDone -= OnLine;
         _session.Tracker.Progressed -= OnProgress;
         _session = null;
     }
@@ -131,8 +132,8 @@ internal sealed class BingoOverlay
             return;
         }
         var size = _session.Board.Size;
-        var filled = _session.FilledBy(_localPlayer);
-        var lines = _session.LinesBy(_localPlayer);
+        var filled = _session.State.FilledFor(_localPlayer);
+        var lines = _session.State.LinesFor(_localPlayer);
         var inLines = lines.SelectMany(line => BoardRules.Lines(size)[line]).ToHashSet();
         _board.Update(filled, inLines, lines.Count, _session.Board.Squares.Count);
         _icon.Draw(size, filled, inLines);
@@ -140,11 +141,12 @@ internal sealed class BingoOverlay
 
     private void OnFilled(SquareFilled filled) => Deferred(() =>
     {
-        if (filled.PlayerId != _localPlayer || _session == null)
+        // Your own squares; in Team mode, your teammates' too.
+        if (_session == null || (filled.PlayerId != _localPlayer && _session.Board.Mode != BingoMode.Team))
         {
             return;
         }
-        var c = filled.Completion;
+        var c = filled.Claim;
         _board.MarkFilled(filled.Square, $"{c.Evidence}{Where(c.At)}");
         Refresh();
         _icon.Pulse();
@@ -153,7 +155,7 @@ internal sealed class BingoOverlay
 
     private void OnLine(LineCompleted line) => Deferred(() =>
     {
-        if (line.PlayerId != _localPlayer || _session == null)
+        if (_session == null || (line.PlayerId != _localPlayer && _session.Board.Mode != BingoMode.Team))
         {
             return;
         }
