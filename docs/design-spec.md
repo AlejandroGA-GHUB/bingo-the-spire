@@ -61,11 +61,13 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 
 | Where | What the player sees |
 |---|---|
-| **Custom run screen** | A **Bingo** section above the run-seed field: a bingo-seed box, plus the mode picker in co-op |
-| **Normal run (solo or co-op lobby)** | A small **Bingo** button on the character-select / lobby screen. It opens a panel with the bingo-seed box and, in co-op, the mode picker |
-| **Co-op** | Only the **host** sets the bingo options. Other players see them, read-only, and they're sent to them over the game's own lobby connection |
+| **Every screen where a run is set up** (character select solo or co-op, custom run, and beta's extra modes) | A **Bingo** button in the top-right corner, showing "BINGO: ON · Versus" or "BINGO: OFF". It opens the Bingo panel |
+| **The Bingo panel** | An **on/off toggle** (remembered between runs, on by default), the **bingo-seed box**, and in co-op the **mode picker** with a one-line description of each mode |
+| **Co-op** | Only the **host** sets the bingo options. Other players see them, read-only, and they're sent to them over the game's own co-op connection |
 
-If nothing is set, the bingo seed is empty: the board is built from the run seed and the mode is Versus. The board is built when the run starts and stays fixed for that run.
+- **The bingo-seed box** takes nothing (the board comes from the run seed), a bingo seed, or a full board code (section 5). The panel says which one it read; a bad entry is shown in red and turns bingo off for that run.
+- The seed entry is **cleared once a run starts with it**, so the next run doesn't quietly reuse the same board. The on/off choice and the co-op mode are remembered.
+- If nothing is set, the board is built from the run seed and the mode is Versus. The board is built when the run starts and stays fixed for that run. With bingo off, the run has no board, no icon, and nothing is tracked.
 
 ### 4.2 Solo
 - One board. Squares fill as you complete goals: a toast appears and the square pulses.
@@ -214,12 +216,15 @@ The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (version 1, 45 goals
 **Everything goes over the game's own co-op connection.** No Steam lobby of our own, no relay server, no cost.
 
 - **Messages:** the mod adds its own small message types to the game's co-op connection. They're always sent reliably.
-- **The host decides.** Every claim, the host's own included, goes through one function that applies the mode's rules:
-  1. A player's game detects a goal and sends a **claim** (square, goal, player, floor, turn, evidence) to the host.
-  2. The host applies the mode's rules (Lockout: first valid claim wins; Versus and Team: accept) and gives the claim a sequence number.
-  3. The host sends the **result** to everyone. Every player's game applies results in sequence order, so all boards stay the same.
-- **Lobby options:** the host's bingo settings (mode, bingo seed) are sent to everyone in the lobby. Before the run starts, everyone builds the board and checks it matches the host's (a hash of the board). If it doesn't, bingo is turned off for that run with a clear message, and the run itself is not affected.
-- **Rejoin or late join:** the host sends a **snapshot**: settings, board hash, and the full list of claims in order.
+- **The host decides.** Each player's game detects goals for **its own player only** and sends a **claim** (square, goal, player, floor, turn, evidence) to the host. The host's own player claims locally.
+  1. The host applies the mode's rules (Lockout and Team: the first claim for a square wins it; Versus: accept) and gives the result an **order number**. A claim for a square that player already has gets no result at all.
+  2. The host sends the **result** to everyone, and every game applies results in order, so all boards stay the same. Results also go into each game's journal (section 8).
+  3. Claims for squares that are already taken aren't sent. A race that's lost shows "Too late: Sam got it first".
+- **Lobby options:** the host's bingo settings (on/off, bingo seed, mode) are sent to everyone in the lobby: when the host changes them, when a player joins, and when a client's Bingo panel asks for them.
+- **One sync for start, Continue and rejoin:** whenever a client's run starts, it sends the host a **hello** with its board's hash. The host answers with a **snapshot**: on/off, its board code, its board hash, and every result so far.
+  - If the client built a different board (e.g. it missed the lobby settings), it rebuilds the host's board from the code, and its own progress so far is claimed again.
+  - The client then resets its board to exactly the snapshot. This also repairs a client whose saved results drifted from the host's after a Continue.
+  - If the client can't build the host's board at all (the hashes still differ), bingo is turned off for that client with a clear message, and the run itself is not affected.
 - **If the host leaves:** the co-op run itself depends on the host, so bingo ends with the run. Nothing needs to take over.
 - **Missing the mod or a different version:** the mod is marked as affecting gameplay, so the game itself compares mod lists when someone joins, and blocks the join if they don't match. This takes care of "the other player needs the mod" without extra code (to be confirmed in spike B).
 
@@ -324,7 +329,7 @@ The `id` must not change after release: the game uses it for its settings and co
 - **Determinism:** property tests checking that the same inputs always give the same board, that lines stay within their difficulty limits, and that exclusions are respected. A **known-answer test** pins exact boards for a few seeds, so changes to the hash or random number generator are caught.
 - **Rules:** all three modes, plus simultaneous claims, duplicate claims, claims after a win, rejoin snapshots. All of it is plain C#, with no game or network needed.
 - **Clinch:** each example in section 4.3.1 becomes a test. In particular, a big lead in squares while an opponent still has a live line must **not** count as a clinch. Also covered: ties, 3–4 players, the 4×4 board, and the run ending before anyone has won.
-- **Branches:** replay tests run against recordings from both branches. The branch check tool compares the adapter's targets in `refs/main` and `refs/beta`.
+- **Branches:** replay tests run against recordings from both branches. The branch check tool loads the built mod against `refs/main` and `refs/beta`: every hook listener and patch target must exist, and every game type, method and field the mod uses must resolve (an optional parameter added on one branch changes a method's signature, and would otherwise only fail in game).
 - **Save and continue:** quit in the middle of a goal in progress, continue, and check that the progress comes back.
 - **Compatibility:** smoke-test runs with a popular character mod (e.g. Chaos Zero Nightmare / Tiphera) and a mod that adds events. The board has to build, general goals have to fire, and nothing can crash.
 - **Manual:** a full solo run to a bingo on each branch, a co-op match in each mode, controller navigation.

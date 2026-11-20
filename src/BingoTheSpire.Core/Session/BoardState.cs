@@ -171,6 +171,32 @@ public sealed class BoardState
         }
     }
 
+    /// <summary>Raised by <see cref="Reset"/>: anything drawn from this state should be redrawn.</summary>
+    public event Action? Cleared;
+
+    /// <summary>
+    /// Forgets every result (keeping the players), so a co-op client can apply the host's full
+    /// list of results and end up exactly like the host.
+    /// </summary>
+    public void Reset()
+    {
+        _applied.Clear();
+        _filled.Clear();
+        _owner.Clear();
+        _claims.Clear();
+        _playerLines.Clear();
+        _teamLines.Clear();
+        _placements.Clear();
+        _reachedAt.Clear();
+        NextOrder = 1;
+        Winner = null;
+        Cleared?.Invoke();
+    }
+
+    /// <summary>Every accepted result, in order, e.g. for a snapshot.</summary>
+    public IReadOnlyList<ClaimResolved> Results =>
+        _claims.Values.OrderBy(r => r.Order).ToList();
+
     /// <summary>The run ended. Lockout with no line and no clinch goes to the most squares.</summary>
     public void Finish(RunPosition? at)
     {

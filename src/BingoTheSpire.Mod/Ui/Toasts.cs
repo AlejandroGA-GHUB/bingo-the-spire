@@ -51,6 +51,19 @@ internal sealed class Toasts
         }
     }
 
+    /// <summary>Accent for other players' moves in Lockout.</summary>
+    public static readonly Color Rival = new(0.95f, 0.42f, 0.5f);
+
+    /// <summary>A plain announcement: a title in the accent color and a line of text.</summary>
+    public void Notice(string title, string text, Color accent, bool big = false)
+    {
+        var card = Card(accent.Darkened(0.72f) with { A = 0.97f }, accent, accent with { A = 0.45f }, big ? 26 : 16);
+        var column = Column(card);
+        column.AddChild(Centered(BingoStyle.Text(title, big ? 44 : 18, accent.Lightened(0.25f), outline: big ? 10 : 5)));
+        column.AddChild(Centered(BingoStyle.Text(text, big ? 20 : 22, Colors.White, outline: 6), wrap: true));
+        Show(card, hold: big ? 4.5 : 3.0, popFrom: big ? 0.5f : 0.7f);
+    }
+
     private PanelContainer Card(Color background, Color border, Color glow, int glowSize)
     {
         var card = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore };

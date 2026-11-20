@@ -42,9 +42,10 @@ public static class ModEntry
             var recorder = new RunRecorder();
             Events.Subscribe(recorder.OnEvent);
             Settings = BingoSettings.Load();
-            Bingo = new BingoRuntime();
+            Bingo = new BingoRuntime(Settings);
             Bingo.SessionStarted += session => Callable.From(() =>
                 BingoOverlay.Current?.Bind(session, Bingo.LocalPlayerId)).CallDeferred();
+            Bingo.SessionStopped += () => Callable.From(() => BingoOverlay.Current?.Unbind()).CallDeferred();
             Events.Subscribe(Bingo.OnEvent);
             Adapter.RunAttaching += Events.Reset;
             Adapter.Install(Events);

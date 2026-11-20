@@ -152,6 +152,31 @@ public class BingoSessionTests
         Assert.Equal([1L, 2L], resolved.Select(r => r.Order));
     }
 
+    [Fact]
+    public void Snapshot_ReplacesWhateverTheClientHad()
+    {
+        var host = Session(BingoMode.Lockout);
+        Fill(host, Alex, 1);
+        Fill(host, Sam, 3);
+
+        // The client's results drifted (e.g. kept one the host later dropped on Continue).
+        var client = new BingoSession(Board(4, BingoMode.Lockout), Goals(16), isAuthority: false);
+        client.Handle(new RunAttached("TEST", "Standard", false, 0, [new PlayerInfo(Alex, "IRONCLAD"), new PlayerInfo(Sam, "SILENT")], Sam));
+        client.Handle(new ClaimResolved(1, 9, "g9", Sam, true, "stale"));
+
+        var cleared = 0;
+        client.State.Cleared += () => cleared++;
+        client.State.Reset();
+        foreach (var result in host.State.Results)
+        {
+            client.Handle(result);
+        }
+        Assert.Equal(1, cleared);
+        Assert.Null(client.State.OwnerOf(9));
+        Assert.Equal(host.State.Results, client.State.Results);
+        Assert.Equal(host.State.NextOrder, client.State.NextOrder);
+    }
+
     // ---- Lockout clinch (spec 4.3.1) ----------------------------------------------------------
 
     private static BoardState Lockout(int size, params ulong[] players)

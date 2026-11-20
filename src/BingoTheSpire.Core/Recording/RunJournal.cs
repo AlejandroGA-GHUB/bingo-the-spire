@@ -3,8 +3,12 @@ using BingoTheSpire.Core.Serialization;
 
 namespace BingoTheSpire.Core.Recording;
 
-/// <summary>First line of a run journal: which run and which board it belongs to.</summary>
-public sealed record JournalHeader(string Format, string Seed, long StartTime, string BoardCode, string BoardHash)
+/// <summary>
+/// First line of a run journal: which run and board it belongs to. The board code holds the
+/// settings it was built with, so Continue rebuilds the same board whatever the lobby says now.
+/// </summary>
+/// <param name="Enabled">False when the run was started with bingo turned off: Continue keeps it off.</param>
+public sealed record JournalHeader(string Format, string Seed, long StartTime, string BoardCode, string BoardHash, bool Enabled = true)
 {
     public const string CurrentFormat = "bingothespire-journal/1";
 }

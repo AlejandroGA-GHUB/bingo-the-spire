@@ -133,6 +133,41 @@ internal static class Adapter
         });
     }
 
+    /// <summary>The game's connection for the current run: solo, or the co-op host's or client's.</summary>
+    public static MegaCrit.Sts2.Core.Multiplayer.Game.INetGameService? CurrentNetService()
+    {
+        try
+        {
+            return RunManager.Instance.NetService;
+        }
+        catch (Exception ex)
+        {
+            LogOnce("netservice", $"couldn't get the game's connection: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>A player's display name (Steam name in co-op), or "Player N" if it can't be found.</summary>
+    public static string PlayerName(ulong playerId)
+    {
+        try
+        {
+            if (CurrentNetService() is { } service)
+            {
+                var name = MegaCrit.Sts2.Core.Platform.PlatformUtil.GetPlayerName(service.Platform, playerId);
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    return name;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            LogOnce("playername", $"couldn't look up player names: {ex.Message}");
+        }
+        return $"Player {playerId}";
+    }
+
     private static readonly FieldInfo? StartTimeField =
         typeof(RunManager).GetField("_startTime", BindingFlags.NonPublic | BindingFlags.Instance);
 

@@ -122,11 +122,14 @@ internal sealed class BoardPanel
         }
     }
 
-    public void Update(IReadOnlySet<int> filled, IReadOnlySet<int> inLines, int lines, int total)
+    /// <param name="others">Squares another player has (Lockout: taken from you; Team: filled by a teammate), with their name.</param>
+    public void Update(IReadOnlySet<int> filled, IReadOnlySet<int> inLines, int lines, int total,
+        IReadOnlyDictionary<int, string>? others = null)
     {
         foreach (var cell in _cells)
         {
-            cell.SetState(filled.Contains(cell.Square.Index), inLines.Contains(cell.Square.Index));
+            var index = cell.Square.Index;
+            cell.SetState(filled.Contains(index), inLines.Contains(index), others?.GetValueOrDefault(index));
         }
         _stats.Text = $"{filled.Count} / {total} squares" + (lines switch
         {
@@ -179,6 +182,7 @@ internal sealed class BoardPanel
         private readonly Control _barRow;
         private readonly Color _accent;
         private bool _filled;
+        private bool _taken;
 
         public Cell(BoardSquare square, Vector2 size)
         {
@@ -221,11 +225,17 @@ internal sealed class BoardPanel
 
         public string Evidence { get; set; } = "";
 
-        public void SetState(bool filled, bool inLine)
+        /// <param name="owner">Another player who has this square, if any.</param>
+        public void SetState(bool filled, bool inLine, string? owner = null)
         {
             _filled = filled;
+            _taken = !filled && owner != null;
             StyleBoxFlat style;
-            if (inLine)
+            if (_taken)
+            {
+                style = BingoStyle.Box(new Color(0.16f, 0.09f, 0.11f), 10, 2, new Color(0.62f, 0.27f, 0.32f), 8);
+            }
+            else if (inLine)
             {
                 style = BingoStyle.Box(BingoStyle.Filled.Lerp(BingoStyle.Gold, 0.35f), 10, 4, BingoStyle.Gold, 8, BingoStyle.GoldGlow, 12);
             }
@@ -238,18 +248,24 @@ internal sealed class BoardPanel
                 style = BingoStyle.Box(_accent.Darkened(0.78f), 10, 2, _accent.Darkened(0.2f), 8);
             }
             Root.AddThemeStyleboxOverride("panel", style);
-            _pips.Text = filled ? "✔ DONE" : new string('●', Square.Difficulty) + new string('○', 5 - Square.Difficulty);
-            _pips.AddThemeColorOverride("font_color", filled ? (inLine ? BingoStyle.Gold : BingoStyle.FilledBorder) : _accent);
-            if (filled)
+            _pips.Text = _taken ? $"🔒 {owner}"
+                : filled ? (owner != null ? $"✔ {owner}" : "✔ DONE")
+                : new string('●', Square.Difficulty) + new string('○', 5 - Square.Difficulty);
+            _pips.AddThemeColorOverride("font_color", _taken ? new Color(1f, 0.55f, 0.6f)
+                : filled ? (inLine ? BingoStyle.Gold : BingoStyle.FilledBorder) : _accent);
+            _text.Modulate = _taken ? new Color(1, 1, 1, 0.5f) : Colors.White;
+            if (filled || _taken)
             {
                 _barRow.Visible = false;
             }
-            Root.TooltipText = $"{Square.Text}\nDifficulty {Square.Difficulty}/5" + (filled && Evidence.Length > 0 ? $"\n\n✔ {Evidence}" : "");
+            Root.TooltipText = $"{Square.Text}\nDifficulty {Square.Difficulty}/5"
+                + (_taken ? $"\n\nTaken by {owner}" : "")
+                + ((filled || _taken) && Evidence.Length > 0 ? $"\n\n✔ {Evidence}" : "");
         }
 
         public void SetProgress(int current, int target)
         {
-            if (_filled || target <= 1)
+            if (_filled || _taken || target <= 1)
             {
                 return;
             }

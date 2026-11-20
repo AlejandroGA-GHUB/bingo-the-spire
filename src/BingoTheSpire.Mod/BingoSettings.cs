@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using BingoTheSpire.Core.Boards;
+using BingoTheSpire.Core.Session;
 
 namespace BingoTheSpire.Mod;
 
@@ -20,6 +22,21 @@ internal sealed class BingoSettings
     /// resolution changes). Null keeps the default spot next to the run timer.
     /// </summary>
     public (float X, float Y)? IconPosition { get; private set; }
+
+    /// <summary>Bingo on or off for new runs. Remembered between runs.</summary>
+    public bool Enabled { get; private set; } = true;
+
+    /// <summary>The co-op mode last picked as host. Remembered between runs.</summary>
+    public BingoMode Mode { get; private set; } = BingoMode.Versus;
+
+    /// <summary>
+    /// What's in the bingo-seed box. Not saved: it's cleared once a run starts with it, so the
+    /// next run doesn't quietly reuse the same board.
+    /// </summary>
+    public string? SeedEntry { get; private set; }
+
+    /// <summary>This game's choice for the next run (in co-op, only the host's counts).</summary>
+    public BingoSetup Setup => new(Enabled, SeedEntry, Mode);
 
     public static string FilePath => Path.Combine(DataPaths.Root, "settings.json");
 
@@ -42,6 +59,15 @@ internal sealed class BingoSettings
                 var text = hotkey?.GetValueKind() == JsonValueKind.String ? hotkey.GetValue<string>().Trim() : null;
                 settings.Hotkey = string.IsNullOrEmpty(text) || text.Equals("off", StringComparison.OrdinalIgnoreCase) ? null : text;
             }
+            if (root["enabled"]?.GetValueKind() is JsonValueKind.True or JsonValueKind.False)
+            {
+                settings.Enabled = root["enabled"]!.GetValue<bool>();
+            }
+            if (root["mode"]?.GetValueKind() == JsonValueKind.String
+                && Enum.TryParse<BingoMode>(root["mode"]!.GetValue<string>(), ignoreCase: true, out var mode))
+            {
+                settings.Mode = mode;
+            }
             if (root["iconPosition"] is JsonArray { Count: 2 } pos
                 && pos[0]?.GetValueKind() == JsonValueKind.Number && pos[1]?.GetValueKind() == JsonValueKind.Number)
             {
@@ -61,6 +87,20 @@ internal sealed class BingoSettings
         Save();
     }
 
+    public void SetSetup(bool enabled, string? seedEntry, BingoMode mode)
+    {
+        SeedEntry = string.IsNullOrWhiteSpace(seedEntry) ? null : seedEntry.Trim();
+        if (Enabled != enabled || Mode != mode)
+        {
+            Enabled = enabled;
+            Mode = mode;
+            Save();
+        }
+    }
+
+    /// <summary>A run started with the seed entry: clear it for the next one.</summary>
+    public void ClearSeedEntry() => SeedEntry = null;
+
     private void Save()
     {
         try
@@ -68,6 +108,8 @@ internal sealed class BingoSettings
             Directory.CreateDirectory(DataPaths.Root);
             var root = new JsonObject
             {
+                ["enabled"] = Enabled,
+                ["mode"] = Mode.ToString(),
                 ["hotkey"] = Hotkey ?? "off",
                 ["iconPosition"] = IconPosition is { } p
                     ? new JsonArray(Math.Round(p.X, 4), Math.Round(p.Y, 4))
