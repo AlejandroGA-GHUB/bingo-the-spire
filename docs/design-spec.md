@@ -109,7 +109,9 @@ Rules for every mode:
 
 ### 4.4 In-run UI
 
-- **Bingo button + hotkey** (default `B`, can be changed; works with mouse and controller) opens the full board.
+- **Bingo button + hotkey** opens the full board. The button is always there and works with mouse and controller.
+  - The hotkey defaults to `B`, but **only if no other binding (the game's or another mod's) already uses that key**. If it does, the hotkey starts off and the log says why.
+  - Players can set their own key, or turn the hotkey off, in the bingo settings.
 - **Your board:** 5×5 grid showing each goal's text, filled squares, and **progress on goals in progress** (e.g. "7/10 cards this turn", "Block 38/50").
 - **Teammate previews** (co-op): one small board per teammate showing only which cells are filled. **Clicking one opens that player's full board.** In Lockout and Team, the one shared board shows everyone's colors instead.
 - **Hover details:** who completed the square, on which floor and turn, and the evidence (e.g. "53 Block on turn 4, Act 2 floor 22").
@@ -118,7 +120,7 @@ Rules for every mode:
 - **Toasts** for your own completions and important events (a teammate's bingo, a locked square you were working on).
 - **Mini-board** that can be pinned in a corner: about 120 px, colors only, hover a cell to see its goal.
 - **Results** after the game's own run summary: final board(s), lines and their floors and times, placements, and the board code.
-- **Settings:** hotkey, mini-board corner, colorblind-safe player colors.
+- **Settings:** hotkey (any key, or off), mini-board corner, colorblind-safe player colors.
 
 ## 5. Seeds and determinism
 

@@ -17,6 +17,9 @@ internal sealed class BingoRuntime
 {
     public BingoSession? Session { get; private set; }
 
+    /// <summary>The player on this machine, whose board the UI shows.</summary>
+    public ulong LocalPlayerId { get; private set; }
+
     /// <summary>Raised after a new board is built, before the run's first event reaches it.</summary>
     public event Action<BingoSession>? SessionStarted;
 
@@ -40,6 +43,7 @@ internal sealed class BingoRuntime
     private void Start(RunAttached run)
     {
         Session = null;
+        LocalPlayerId = run.LocalPlayerId ?? run.Players.FirstOrDefault()?.PlayerId ?? 0;
         try
         {
             var available = Adapter.Sources.Where(s => s.Connected).SelectMany(s => s.Events).ToHashSet(StringComparer.Ordinal);

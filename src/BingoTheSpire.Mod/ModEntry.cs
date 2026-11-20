@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using System.Reflection;
+using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Modding;
 using BingoTheSpire.Core.Events;
 using BingoTheSpire.Mod.GameAdapter;
+using BingoTheSpire.Mod.Ui;
 
 namespace BingoTheSpire.Mod;
 
@@ -26,6 +28,8 @@ public static class ModEntry
 
     internal static BingoRuntime? Bingo { get; private set; }
 
+    internal static BingoSettings? Settings { get; private set; }
+
     public static void Initialize()
     {
         try
@@ -37,7 +41,10 @@ public static class ModEntry
 
             var recorder = new RunRecorder();
             Events.Subscribe(recorder.OnEvent);
+            Settings = BingoSettings.Load();
             Bingo = new BingoRuntime();
+            Bingo.SessionStarted += session => Callable.From(() =>
+                BingoOverlay.Current?.Bind(session, Bingo.LocalPlayerId)).CallDeferred();
             Events.Subscribe(Bingo.OnEvent);
             Adapter.RunAttaching += Events.Reset;
             Adapter.Install(Events);
