@@ -1,0 +1,27 @@
+<Project>
+  <!--
+    Shared build settings for every project.
+    Machine-specific paths go in an optional, gitignored `local.props` next to this file, e.g.:
+      <Project><PropertyGroup><GameDir>D:\SteamLibrary\steamapps\common\Slay the Spire 2</GameDir></PropertyGroup></Project>
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)local.props" Condition="Exists('$(MSBuildThisFileDirectory)local.props')" />
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+
+    <!-- Game install folder. Override in local.props. -->
+    <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Slay the Spire 2</GameDir>
+
+    <!--
+      Folder holding the sts2.dll / GodotSharp.dll / 0Harmony.dll we compile against.
+      Spec rule: build against MAIN. Defaults to refs\main when present, otherwise the installed game.
+    -->
+    <Sts2RefDir Condition="'$(Sts2RefDir)' == '' And Exists('$(RepoRoot)refs\main\sts2.dll')">$(RepoRoot)refs\main</Sts2RefDir>
+    <Sts2RefDir Condition="'$(Sts2RefDir)' == ''">$(GameDir)\data_sts2_windows_x86_64</Sts2RefDir>
+  </PropertyGroup>
+</Project>

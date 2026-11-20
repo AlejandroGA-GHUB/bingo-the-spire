@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pure bingo logic: events, detectors, goals, board generator, mode rules, state, hashing.
+    MUST NOT reference sts2.dll, GodotSharp or Harmony: everything here is testable without the game.
+    The mod project compiles these sources into its own DLL (the game loads exactly one <id>.dll per mod).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>StS2Bingo.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="StS2Bingo.Core.Tests" />
+  </ItemGroup>
+
+</Project>
