@@ -24,6 +24,8 @@ public static class ModEntry
 
     internal static EventBus? Events { get; private set; }
 
+    internal static BingoRuntime? Bingo { get; private set; }
+
     public static void Initialize()
     {
         try
@@ -35,6 +37,8 @@ public static class ModEntry
 
             var recorder = new RunRecorder();
             Events.Subscribe(recorder.OnEvent);
+            Bingo = new BingoRuntime();
+            Events.Subscribe(Bingo.OnEvent);
             Adapter.RunAttaching += Events.Reset;
             Adapter.Install(Events);
 
