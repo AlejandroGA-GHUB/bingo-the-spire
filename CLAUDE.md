@@ -1,0 +1,42 @@
+# CLAUDE.md
+
+Guidance for AI agents working on this repo.
+
+## Source of truth
+- **`docs/design-spec.md` is the design.** Read the relevant section before changing behavior. If a change departs from the spec, update the spec in the same commit, or ask first.
+- `docs/game-internals.md` records what we know about the game's code (types, hooks, messages, seeds). Add to it when you discover something.
+- `docs/archive/` is history only. Don't follow it where it disagrees with the spec.
+
+## Architecture rules (do not break)
+1. **`StS2Bingo.Core` has no game references.** No `sts2.dll`, Godot or Harmony types. Everything in Core must be testable with plain `dotnet test`.
+2. **Only the game adapter in `StS2Bingo.Mod` touches game internals.** It turns game hooks into Core events, tagged with the player who caused them.
+3. **The mod only watches the game.** Patches are postfixes or official hook listeners that never change game state. No prefixes that skip the original method, no transpilers. Catch exceptions inside every hook so nothing reaches the game.
+4. **Determinism:** never use `string.GetHashCode()`, `System.Random`, the game's random number streams, or the clock for board generation. Use `StableHash` and our own seeded random number generator.
+5. **A goal is completed by one player alone.** Never add values up across players.
+6. **One build runs on main and beta.** Build against main's `sts2.dll`. Look up anything that may differ between branches by name with fallbacks, and turn off the goals that depend on it if it's missing. Don't branch on version strings.
+   - **Never compare game enums by their compiled value.** They're compiled into our DLL as numbers, and the numbers change between branches. For example, `GameMode.Custom` = 3 on main, but 3 means `Dread` on beta. Read enums by name through the adapter.
+   - Hooks whose signature differs between branches (e.g. `AfterDeath`) need a handler for each branch. See `docs/game-internals.md`.
+7. **Compatibility with other mods:** general goals must count modded content. Don't hard-code vanilla IDs except in goals tied to a specific character.
+8. **Never commit game files** (`sts2.dll`, decompiled source, assets). `refs/` is gitignored for this reason.
+
+## Layout
+- `src/StS2Bingo.Core/`: bingo logic only, no game dependencies. Its source files are **compiled into** the mod's DLL through a linked `<Compile Include>`. The game loads exactly one `<id>.dll` per mod.
+- `src/StS2Bingo.Mod/`: entry point `ModEntry` (`[ModInitializer]`), manifest `StS2Bingo.json` (the `id` must equal the AssemblyName and must never change).
+- `tests/StS2Bingo.Core.Tests/`: xUnit tests on net10.0. Core and the mod target net9.0 to match the game.
+- `refs/main/`, `refs/beta/` (gitignored): copies of the game DLLs for each branch, for compiling and comparing branches.
+
+## Commands
+```sh
+dotnet build -p:DeployToGame=false   # build only
+dotnet build                         # build + copy the mod into <GameDir>/mods/StS2Bingo
+dotnet test                          # Core tests
+```
+Game path: `GameDir` in `Directory.Build.props`, overridden by the gitignored `local.props`.
+
+## Reading game code
+- Decompile with `ilspycmd` into a temporary or scratch folder, never inside the repo.
+- `sts2.xml` next to `sts2.dll` has the game's own documentation comments for many types.
+- The game is Godot 4.5.1 + .NET 9 + Harmony 2.4.2.
+
+## Commits
+Follow the user's `commit-rules` skill: small, frequent commits written as `type(scope): summary`, with no AI attribution trailers. Push only when asked.
