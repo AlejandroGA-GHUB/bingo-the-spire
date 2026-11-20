@@ -126,17 +126,19 @@ Rules for every mode:
 
 ```
 seedText   = bingoSeed (if one was entered) ?? runSeed      // both are the game's 12-character seed format
-boardSeed  = StableHash64("bingothespire|" + seedText + "|" + goalListVersion + "|" + bingoMode + "|" + gameMode + "|" + size + "|" + sortedCharacterIds)
-board      = Generate(boardSeed, goalList filtered by (characters, game mode, available detectors), bingoMode, size)
+boardSeed  = StableHash64("bingothespire|" + seedText + "|" + goalListVersion + "|" + bingoMode + "|" + gameModeClass + "|" + size + "|" + difficulty + "|" + sortedDistinctCharacterIds)
+board      = Generate(boardSeed, goalList filtered by (characters, game mode class, available detectors), bingoMode, size, difficulty)
 ```
+
+- **Game mode class:** only Blitz changes the board (4×4 and fewer goals), so the class is `Blitz` or `Standard`. Standard, Custom, Daily and Dread all count as `Standard`, so **replaying a run's seed in a Custom run gives the same board.**
 
 - **The run seed is the default.** It's the same seed the game shows (e.g. `7K2M9QX4ZB1C`). Every co-op player already has it, so in the default case **nothing about the board needs to be sent**. Sharing a run seed shares the whole experience.
 - **The bingo seed overrides it.** It uses the same format as game seeds and is cleaned the same way (uppercased; O is read as 0 and I as 1). It lets you replay the same board on a different run seed, or a different board on the same run seed.
 - **The mod uses its own random numbers.** The board builder never uses the game's random number streams, so building a board can't change the run (map, rewards, shuffles).
-- **Stable hashing only.** We never use .NET's `string.GetHashCode()` (it changes every launch); we use our own hash (FNV-1a 64 or xxHash64) and our own seeded random number generator (SplitMix64 / xoshiro256**). Both are covered by tests.
+- **Stable hashing only.** We never use .NET's `string.GetHashCode()` (it changes every launch); we use our own hash (FNV-1a 64) and our own seeded random number generator (xoshiro256** seeded through SplitMix64). Both are checked against reference outputs in the tests, and a known-answer test pins exact boards.
 - **The board depends on the characters in the run**, because character-specific goals are filtered. So "same seed + same characters + same versions = same board."
 - **The board depends on which goals can be detected.** Goals whose detector can't run on this game version are left off before the board is built (section 9). In co-op every player is on the same game version (the game checks this when someone joins), so every player gets the same board.
-- **Board codes:** a short string encoding `(seedText, goalListVersion, mode, size)`. Pasting one into the bingo-seed box reproduces the board, as long as the characters match. If the code's goal-list version isn't available, or its goals can't be detected on this version, the mod says so clearly instead of quietly building a different board.
+- **Board codes:** a short string encoding `(seedText, goalListVersion, mode, size, difficulty)`, e.g. `7K2M9QX4ZB1C-1V5M` (seed, goal-list version 1, Versus, 5×5, Medium). Pasting one into the bingo-seed box reproduces the board, as long as the characters match. If the code's goal-list version isn't available, or its goals can't be detected on this version, the mod says so clearly instead of quietly building a different board.
 
 ## 6. Goals and the board builder
 
@@ -146,13 +148,17 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 ```jsonc
 {
   "id": "block_in_turn",
-  "template": "Gain {n}+ Block in a single turn",
+  "text": "Gain {n}+ Block in a single turn",
   "detector": "BlockInTurn",          // detector type name
-  "params": { "n": [30, 50, 80] },    // values the generator can pick from
-  "difficulty": { "30": 1, "50": 2, "80": 4 },
-  "tags": ["combat", "block"],
+  "tiers": [                          // parameter values the builder can pick from, and how hard each is (1-5)
+    { "difficulty": 1, "params": { "n": 30 } },
+    { "difficulty": 2, "params": { "n": 50 } },
+    { "difficulty": 4, "params": { "n": 80 } }
+  ],
+  "tags": ["block"],                  // specific topics; kept out of the same line when possible
   "exclusions": ["block_in_combat"],  // goals too similar, or that contradict this one
-  "requires": { "events": ["BlockGained", "TurnStarted"], "character": null }
+  "requires": { "events": ["BlockGained", "SideTurnStarted"], "character": null },
+  "excludeGameModes": ["Blitz"]       // optional: game mode classes this goal is left out of
 }
 ```
 
@@ -161,8 +167,13 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 - `requires.character` is optional. Character-specific goals are matched by the game's character ID.
 
 ### 6.2 Board builder
-- Works like Bingosync's "SRL" generator: every row, column and both diagonals add up to about the same total difficulty.
-- No two goals with overlapping tags in the same line, exclusions are respected, and no goal appears twice (including the same template with different parameters).
+- Works like Bingosync's "SRL" generator: every row, column and both diagonals add up to **exactly** the same total difficulty.
+  - A seeded layout puts one cell of each **difficulty band** in every line (a diagonal Latin square).
+  - Each difficulty setting maps the bands to goal difficulties. 5×5: Easy 1,1,2,2,3; **Medium 1,2,3,3,4**; Hard 2,3,4,4,5. 4×4: Easy 1,1,2,3; **Medium 1,2,3,3**; Hard 2,3,4,5.
+  - Cells are filled hardest first. Each gets a random goal tier at the target difficulty, or the closest available.
+- Goals sharing a tag are kept out of the same line whenever the pool allows it. This is why tags should be specific ("block", "potions"), not broad ("combat").
+- Exclusions apply to the whole board, and no goal appears twice (including the same goal with different parameters).
+- The goal list's file order never matters: goals are sorted by id first.
 - v1 default: **5×5, medium difficulty mix**. Other sizes and difficulty settings are built into the data model but not shown in the menus.
 - **Game modes:** bingo is on in every game mode.
   - Standard, Custom, Daily and **Dread** (beta) use the normal 5×5 board.
