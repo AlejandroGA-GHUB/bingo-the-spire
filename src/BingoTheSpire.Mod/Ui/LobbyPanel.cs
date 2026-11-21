@@ -280,6 +280,7 @@ internal sealed class LobbyPanel
                     note.Slot.AcceptEvent();
                 }
             };
+            Gamepad.Focusable(note.Slot, () => Pick(mode: mode));
         }
         return note;
     }
@@ -308,9 +309,9 @@ internal sealed class LobbyPanel
         var button = BingoFonts.Keep(new Button
         {
             Text = text,
-            FocusMode = Control.FocusModeEnum.None,
             CustomMinimumSize = new Vector2(96, 46),
         });
+        Gamepad.Focusable(button);
         button.AddThemeFontOverride("font", BingoFonts.Heading);
         button.AddThemeFontSizeOverride("font_size", 19);
         return button;

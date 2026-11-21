@@ -224,7 +224,6 @@ internal static class HistoryBook
         var button = BingoFonts.Keep(new Button
         {
             Text = text,
-            FocusMode = Control.FocusModeEnum.None,
             CustomMinimumSize = new Vector2(150, 42),
             SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand,
@@ -247,6 +246,6 @@ internal static class HistoryBook
             button.AddThemeColorOverride(state, BingoStyle.NameplateText);
         }
         button.Pressed += pressed;
-        return button;
+        return Gamepad.Focusable(button);
     }
 }

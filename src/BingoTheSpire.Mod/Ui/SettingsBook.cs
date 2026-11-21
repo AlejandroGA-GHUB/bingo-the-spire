@@ -46,6 +46,11 @@ internal static class SettingsBook
         var keyNote = Body("", 15, BingoStyle.PageInkSoft);
         left.AddChild(keyNote);
         left.AddChild(Body("Changes apply from your next run.", 14, BingoStyle.PageInkSoft));
+        left.AddChild(Spacer(6));
+        left.AddChild(Heading("Controller"));
+        left.AddChild(Body(Gamepad.PickBoardButton() != null
+            ? $"{Gamepad.BoardButtonName} opens the board. In the bingo books, move with the stick or d-pad, Accept picks, Back closes."
+            : "Every controller button is taken by the game: open the board from the bingo button in the top bar. In the bingo books, move with the stick or d-pad, Accept picks, Back closes.", 16, BingoStyle.PageInk));
 
         var listening = false;
         keyButton.Pressed += () =>

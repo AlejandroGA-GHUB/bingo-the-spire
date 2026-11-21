@@ -22,6 +22,18 @@ internal static class BingoHotkey
             InputMap.EraseAction(ActionName);
         }
         ActiveKey = null;
+        InputMap.AddAction(ActionName);
+
+        // A free controller button opens the board too, whatever the key setting.
+        if (Gamepad.PickBoardButton() is { } pad)
+        {
+            InputMap.ActionAddEvent(ActionName, new InputEventJoypadButton { ButtonIndex = pad });
+            BingoLog.Info($"controller button for the board: {Gamepad.BoardButtonName}");
+        }
+        else
+        {
+            BingoLog.Info("no free controller button for the board; controller players can open it from the top bar");
+        }
 
         if (keyName == null)
         {
@@ -35,11 +47,10 @@ internal static class BingoHotkey
         }
         if (FindConflict(key) is { } other)
         {
-            BingoLog.Info($"board hotkey {key} is already used by '{other}', so it's off. Pick another key in {BingoSettings.FilePath}");
+            BingoLog.Info($"board hotkey {key} is already used by '{other}', so it's off. Pick another key in the bingo settings");
             return;
         }
 
-        InputMap.AddAction(ActionName);
         InputMap.ActionAddEvent(ActionName, new InputEventKey { Keycode = key });
         ActiveKey = key;
     }
@@ -59,7 +70,7 @@ internal static class BingoHotkey
     /// <summary>Hooks the action to <paramref name="toggle"/>. The game clears all hotkeys when a run starts, so call this per run.</summary>
     public static void Bind(Action toggle)
     {
-        if (ActiveKey == null || NHotkeyManager.Instance is not { } manager)
+        if ((ActiveKey == null && Gamepad.BoardButton == null) || NHotkeyManager.Instance is not { } manager)
         {
             return;
         }

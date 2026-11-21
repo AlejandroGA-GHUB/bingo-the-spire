@@ -66,6 +66,7 @@ internal sealed class BingoIcon
         Root.MouseEntered += () => Hover(1.1f);
         Root.MouseExited += () => Hover(1f);
         Root.GuiInput += OnInput;
+        Gamepad.Focusable(Root, () => _onClick());
         SetTooltip(null);
     }
 

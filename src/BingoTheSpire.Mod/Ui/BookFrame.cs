@@ -52,7 +52,7 @@ internal sealed class BookFrame
         _close = BingoFonts.Keep(new Button
         {
             Text = "✕",
-            FocusMode = Control.FocusModeEnum.None,
+            FocusMode = Control.FocusModeEnum.All,
             TooltipText = "Close",
             Size = new Vector2(46, 46),
                     });
@@ -69,6 +69,7 @@ internal sealed class BookFrame
         {
             _close.AddThemeColorOverride(state, BingoStyle.NameplateText);
         }
+        _close.AddThemeStyleboxOverride("focus", Gamepad.FocusRing);
         _close.Pressed += Hide;
         Book.AddChild(_close);
 
@@ -106,6 +107,8 @@ internal sealed class BookFrame
     {
         Root.Visible = true;
         Layout();
+        Gamepad.Capture(Root, Hide);
+        Gamepad.FocusFirst(Content, _close);
         Book.Modulate = new Color(1, 1, 1, 0);
         var settle = Book.Position;
         Book.Position = settle + new Vector2(0, 18);
@@ -119,6 +122,7 @@ internal sealed class BookFrame
         if (Root.Visible)
         {
             Root.Visible = false;
+            Gamepad.Release(Root);
             _onClosed();
         }
     }

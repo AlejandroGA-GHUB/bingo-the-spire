@@ -47,6 +47,7 @@ internal static class PlayerPreviews
                 pick(player.Id);
             }
         };
+        Gamepad.Focusable(card, () => pick(player.Id));
         card.MouseEntered += () => card.Modulate = new Color(1.08f, 1.08f, 1.08f);
         card.MouseExited += () => card.Modulate = Colors.White;
 
