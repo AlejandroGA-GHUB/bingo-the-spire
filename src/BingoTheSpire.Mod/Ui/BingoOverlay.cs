@@ -1,3 +1,4 @@
+using BingoTheSpire.Core.History;
 using Godot;
 using BingoTheSpire.Core.Boards;
 using BingoTheSpire.Core.Detection;
@@ -16,6 +17,7 @@ namespace BingoTheSpire.Mod.Ui;
 internal sealed class BingoOverlay
 {
     private readonly CanvasLayer _layer;
+    private readonly Control _root;
     private readonly BingoIcon _icon;
     private readonly BoardPanel _board;
     private readonly Toasts _toasts;
@@ -38,6 +40,7 @@ internal sealed class BingoOverlay
         var root = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
         root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _layer.AddChild(root);
+        _root = root;
 
         _board = new BoardPanel(root);
         _toasts = new Toasts(root);
@@ -181,6 +184,31 @@ internal sealed class BingoOverlay
                 Redraw();
             }
             _board.Toggle();
+        }
+    }
+
+    /// <summary>The run ended: show its results, a moment after the game's own end screen appears.</summary>
+    public void ShowResults(HistoryEntry entry, double delay = 2.5)
+    {
+        if (!GodotObject.IsInstanceValid(_layer))
+        {
+            return;
+        }
+        _layer.GetTree().CreateTimer(delay).Timeout += () =>
+        {
+            if (GodotObject.IsInstanceValid(_root))
+            {
+                _board.Hide();
+                HistoryBook.ShowResults(_root, entry);
+            }
+        };
+    }
+
+    public void ShowHistory()
+    {
+        if (GodotObject.IsInstanceValid(_root))
+        {
+            HistoryBook.ShowHistory(_root);
         }
     }
 

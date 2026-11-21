@@ -20,19 +20,35 @@ public sealed class BingoConsoleCmd : AbstractConsoleCmd
 {
     public override string CmdName => "bingo";
 
-    public override string Args => "<row:int> [delay:seconds] | reset";
+    public override string Args => "<row:int> [delay:seconds] | reset | results | history";
 
     public override string Description =>
         "Bingo the Spire: fill every square in a row (1 = top) to see the BINGO! and the line stroke. "
-        + "Waits 1 second first (or the delay given) so you can close the console. 'bingo reset' empties the board (solo only).";
+        + "Waits 1 second first (or the delay given) so you can close the console. 'bingo reset' empties the board (solo only). "
+        + "'bingo results' previews the end-of-run results (not saved); 'bingo history' opens past runs.";
 
     public override bool IsNetworked => false;
 
     public override CmdResult Process(Player? issuingPlayer, string[] args)
     {
+        var word = args.Length >= 1 ? args[0].ToLowerInvariant() : "";
+        if (word == "history")
+        {
+            DevCommands.After(0.3, () => Ui.BingoOverlay.Current?.ShowHistory());
+            return new CmdResult(success: true, "Opening past runs.");
+        }
         if (DevCommands.Board() is not { } board)
         {
             return new CmdResult(success: false, "There's no bingo board in this run.");
+        }
+        if (word == "results")
+        {
+            if (ModEntry.Bingo?.PreviewResult() is not { } entry)
+            {
+                return new CmdResult(success: false, "No results to show yet.");
+            }
+            Ui.BingoOverlay.Current?.ShowResults(entry, delay: 1);
+            return new CmdResult(success: true, "Showing the results as if the run ended now (not saved).");
         }
         var (session, player) = board;
         if (args.Length >= 1 && args[0].Equals("reset", StringComparison.OrdinalIgnoreCase))

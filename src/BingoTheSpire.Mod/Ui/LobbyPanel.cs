@@ -89,6 +89,8 @@ internal sealed class LobbyPanel
         left.AddChild(_seed);
         _seedHint = Body("", 15, BingoStyle.PageInkSoft);
         left.AddChild(_seedHint);
+        left.AddChild(Spacer(8));
+        left.AddChild(HistoryBook.Button("Past runs", () => HistoryBook.ShowHistory(screen)));
 
         // Right page: what the chosen mode means.
         var right = Column();

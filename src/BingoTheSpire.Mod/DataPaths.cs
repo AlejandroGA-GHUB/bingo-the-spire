@@ -11,4 +11,7 @@ internal static class DataPaths
 
     /// <summary>One journal per run in progress, so Continue can bring bingo progress back.</summary>
     public static string Runs => System.IO.Path.Combine(Root, "runs");
+
+    /// <summary>One line per finished bingo run (spec 8).</summary>
+    public static string History => System.IO.Path.Combine(Root, BingoTheSpire.Core.History.RunHistory.FileName);
 }

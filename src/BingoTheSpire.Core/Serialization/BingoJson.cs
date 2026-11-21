@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using BingoTheSpire.Core.Events;
 using BingoTheSpire.Core.Goals;
+using BingoTheSpire.Core.History;
 using BingoTheSpire.Core.Recording;
 
 namespace BingoTheSpire.Core.Serialization;
@@ -19,6 +20,7 @@ namespace BingoTheSpire.Core.Serialization;
 [JsonSerializable(typeof(RecordingHeader))]
 [JsonSerializable(typeof(GoalList))]
 [JsonSerializable(typeof(JournalHeader))]
+[JsonSerializable(typeof(HistoryEntry))]
 internal sealed partial class BingoJsonContext : JsonSerializerContext;
 
 public static class BingoJson

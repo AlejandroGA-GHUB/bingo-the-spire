@@ -31,6 +31,7 @@ public sealed class BingoSession
         _claimsFor = claimsFor ?? (_ => true);
         Tracker = new GoalTracker(board, goals, onDetectorError);
         State = new BoardState(board);
+        State.LineDone += OnLine;
         Tracker.Completed += OnCompleted;
     }
 
@@ -54,9 +55,31 @@ public sealed class BingoSession
     /// <summary>Authority: a decision made. Record it (journal) and, in co-op, send it to everyone. It's applied right after.</summary>
     public event Action<ClaimResolved>? Resolved;
 
+    /// <summary>Play time (ms since the run started, across Continues) of the last game event handled.</summary>
+    public long PlayMs { get; private set; }
+
+    /// <summary>Play time when each line was made, first time only (a host snapshot replays lines).</summary>
+    public IReadOnlyDictionary<(ulong Player, int Line), long> LineTimes => _lineTimes;
+
+    /// <summary>Where each line was made, from the claim that finished it.</summary>
+    public IReadOnlyDictionary<(ulong Player, int Line), RunPosition?> LinePositions => _linePositions;
+
+    private readonly Dictionary<(ulong, int), long> _lineTimes = new();
+    private readonly Dictionary<(ulong, int), RunPosition?> _linePositions = new();
+
+    private void OnLine(LineCompleted line)
+    {
+        _lineTimes.TryAdd((line.PlayerId, line.Line), PlayMs);
+        _linePositions.TryAdd((line.PlayerId, line.Line), line.At);
+    }
+
     public void Handle(GameEvent evt)
     {
         _lastSeq = Math.Max(_lastSeq, evt.Seq);
+        if (evt is not ClaimResolved)
+        {
+            PlayMs = Math.Max(PlayMs, evt.Ms);
+        }
         switch (evt)
         {
             case ClaimResolved result:

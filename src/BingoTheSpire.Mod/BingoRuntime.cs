@@ -3,6 +3,7 @@ using System.Text;
 using BingoTheSpire.Core.Boards;
 using BingoTheSpire.Core.Detection;
 using BingoTheSpire.Core.Events;
+using BingoTheSpire.Core.History;
 using BingoTheSpire.Core.Goals;
 using BingoTheSpire.Core.Recording;
 using BingoTheSpire.Core.Session;
@@ -55,6 +56,9 @@ internal sealed class BingoRuntime
     /// <summary>Raised when bingo turns off partway, e.g. the co-op host has it off.</summary>
     public event Action? SessionStopped;
 
+    /// <summary>A bingo run ended and was written to the history: show the results.</summary>
+    public event Action<HistoryEntry>? RunFinished;
+
     public void OnEvent(GameEvent evt)
     {
         if (evt is RunAttached run)
@@ -79,6 +83,7 @@ internal sealed class BingoRuntime
         {
             LogResult(session, ended);
             CloseJournal(delete: true);
+            SaveHistory(session, ended);
         }
     }
 
@@ -468,6 +473,45 @@ internal sealed class BingoRuntime
         session.State.LineDone += l => BingoLog.Info(l.Ordinal == 1
             ? $"BINGO! player {l.PlayerId} completed {BoardRules.LineName(board.Size, l.Line).ToLowerInvariant()}{Where(l.At)}"
             : $"line #{l.Ordinal} for player {l.PlayerId}: {BoardRules.LineName(board.Size, l.Line).ToLowerInvariant()}{Where(l.At)}");
+    }
+
+    private void SaveHistory(BingoSession session, RunEnded ended)
+    {
+        if (_run is not { } run)
+        {
+            return;
+        }
+        try
+        {
+            var entry = RunHistory.Record(session, run, ended, LocalPlayerId, Adapter.PlayerName, DateTimeOffset.Now);
+            Directory.CreateDirectory(DataPaths.Root);
+            File.AppendAllText(DataPaths.History, RunHistory.Serialize(entry) + Environment.NewLine);
+            RunFinished?.Invoke(entry);
+        }
+        catch (Exception ex)
+        {
+            BingoLog.Error($"couldn't save the run to the bingo history: {ex.Message}");
+        }
+    }
+
+    /// <summary>The results as they'd be recorded if the run ended now (dev console preview; not saved).</summary>
+    public HistoryEntry? PreviewResult() =>
+        Session is { } session && _run is { } run
+            ? RunHistory.Record(session, run, new RunEnded(false, false), LocalPlayerId, Adapter.PlayerName, DateTimeOffset.Now)
+            : null;
+
+    /// <summary>Every finished run in the history file, oldest first. Empty if there's none yet.</summary>
+    public static List<HistoryEntry> ReadHistory()
+    {
+        try
+        {
+            return File.Exists(DataPaths.History) ? RunHistory.Parse(File.ReadLines(DataPaths.History)) : [];
+        }
+        catch (Exception ex)
+        {
+            BingoLog.Error($"couldn't read the bingo history: {ex.Message}");
+            return [];
+        }
     }
 
     private static void LogResult(BingoSession session, RunEnded ended)

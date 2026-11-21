@@ -132,7 +132,7 @@ Rules for every mode:
 - **Toasts** for your own completions and important events (a teammate's bingo, a locked square you were working on). A finished square shows a green card with a white "SQUARE COMPLETE!" label sitting on its top edge.
 - **Fonts stay ours** when another mod swaps the game's fonts: our text controls carry the marker CznStyleUI checks to leave a control alone.
 - **Mini-board** that can be pinned in a corner: about 120 px, colors only, hover a cell to see its goal.
-- **Results** after the game's own run summary: final board(s), lines and their floors and times, placements, and the board code.
+- **Results** a moment after the game's own end-of-run screen appears, as an open book over it: the run's result, squares and play time on the nameplate; placements (or your run / your team) with each player's character, squares and lines; every line with its act, floor and play time; the board code to play it again; and a **Past runs** button.
 - **Settings:** hotkey (any key, or off), mini-board corner, colorblind-safe player colors.
 
 ## 5. Seeds and determinism
@@ -247,8 +247,8 @@ The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (version 1, 45 goals
   - The mod marks every point where the game saves the run. **Continue** resumes from the game's last save and plays everything after it again, so the mod replays the journal **up to that last save** into a fresh board. That restores every square, line and in-progress counter (e.g. "7/10 cards this turn") exactly, without saving each goal's state separately.
   - If the journal is missing, unreadable or for a different board, the board starts fresh from the seed.
   - The journal is deleted when the run ends. Leftover journals (e.g. a run abandoned from the main menu) are removed after 30 days untouched.
-- **History:** one tiny line per finished bingo run (date, mode, seed and board code, characters, result, floor and time of each line, squares filled), stored as JSON lines in `bingo_history.jsonl` in the mod's data folder.
-- **History screen:** the in-game panel lists past runs and personal bests (fastest first line by floor and by time, most squares in Team) and **shows the folder path**, with a button to open it, for anyone curious.
+- **History:** one tiny line per finished bingo run (date, mode, seed and board code, characters, result, floor and time of each line, squares filled, placements and winner), stored as JSON lines in `bingo_history.jsonl` in the mod's data folder. Each game writes its own, from its own player's point of view. Times are play time since the run started, carried across Continues. Abandoned runs are kept and marked as such. Lines that can't be read are skipped, so a damaged file never stops the mod.
+- **History screen:** opened from **Past runs** on the results or in the lobby's bingo panel. It lists the 8 most recent runs and personal bests (fewest floors to a first line, fastest first line by play time, most squares in Team) and **shows the file's path**, with a button to open the folder, for anyone curious.
 - The data folder is `bingo_the_spire/` inside the game's user data folder (Godot `user://`; on Windows `%APPDATA%\SlayTheSpire2\bingo_the_spire`).
 
 ## 9. Supporting main and beta, and how events reach the mod
@@ -351,6 +351,7 @@ The `id` must not change after release: the game uses it for its settings and co
   - `fill <row> <col> [delay]` fills one square, with its pop-up.
   - Both wait 1 second by default (or the delay given, in seconds) so the console can be closed first.
   - `bingo reset` empties the board, in solo only. A Continue brings the squares back.
+  - `bingo results` previews the end-of-run results as if the run ended now (nothing is saved); `bingo history` opens past runs.
 
 ## 13. Risks
 
