@@ -1,3 +1,4 @@
+#if DEBUG
 using System.Globalization;
 using Godot;
 using MegaCrit.Sts2.Core.DevConsole;
@@ -8,8 +9,9 @@ using BingoTheSpire.Mod.Net;
 
 namespace BingoTheSpire.Mod.DevTools;
 
-// Dev console commands for trying out the bingo UI. The game finds console commands in mods by
-// itself, and only offers debug commands (the default) when its own debug commands are on.
+// Dev console commands for trying out the bingo UI. Debug builds only: the game turns its debug
+// commands on whenever any mod is loaded, so release builds must not contain these at all.
+// The game finds console commands in mods by itself.
 // They fill squares through the normal claim rules, so they're saved in the run's journal like
 // real completions; a Continue brings them back.
 
@@ -153,3 +155,4 @@ internal static class DevCommands
         tree.CreateTimer(seconds).Timeout += Run;
     }
 }
+#endif
