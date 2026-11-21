@@ -80,7 +80,7 @@ internal static class BingoHotkey
     }
 
     /// <summary>Name of an action already bound to the plain key (no modifiers), if any.</summary>
-    private static string? FindConflict(Key key)
+    public static string? FindConflict(Key key)
     {
         foreach (var action in InputMap.GetActions())
         {

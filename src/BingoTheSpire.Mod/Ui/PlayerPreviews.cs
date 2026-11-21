@@ -61,7 +61,7 @@ internal static class PlayerPreviews
             var cell = (Grid - gap * (size - 1)) / size;
             for (var i = 0; i < size * size; i++)
             {
-                var color = player.InLines.Contains(i) ? BingoStyle.Gold : player.Filled.Contains(i) ? BingoStyle.Filled : BingoStyle.ParchmentDark;
+                var color = player.InLines.Contains(i) ? BingoStyle.MiniLine : player.Filled.Contains(i) ? BingoStyle.MiniFilled : BingoStyle.ParchmentDark;
                 grid.DrawRect(new Rect2(i % size * (cell + gap), i / size * (cell + gap), cell, cell), color);
             }
         };
@@ -79,7 +79,7 @@ internal static class PlayerPreviews
         column.AddChild(score);
         if (player.OneAway)
         {
-            var away = BingoStyle.Ink("1 away!", BingoFonts.NoteBold, 12, Color.FromHtml("#d9730d"));
+            var away = BingoStyle.Ink("1 away!", BingoFonts.NoteBold, 12, BingoStyle.OneAwayInk);
             away.HorizontalAlignment = HorizontalAlignment.Center;
             column.AddChild(away);
         }

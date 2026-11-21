@@ -133,7 +133,10 @@ Rules for every mode:
 - **Fonts stay ours** when another mod swaps the game's fonts: our text controls carry the marker CznStyleUI checks to leave a control alone.
 - **Mini-board** that can be pinned in a corner: about 120 px, colors only, hover a cell to see its goal.
 - **Results** a moment after the game's own end-of-run screen appears, as an open book over it: the run's result, squares and play time on the nameplate; placements (or your run / your team) with each player's character, squares and lines; every line with its act, floor and play time; the board code to play it again; and a **Past runs** button.
-- **Settings:** hotkey (any key, or off), mini-board corner, colorblind-safe player colors.
+- **Settings** (a book opened from **Settings** in the lobby's bingo panel, saved to `settings.json` at once):
+  - **Board hotkey:** click, then press any plain key; keys the game already uses are refused with the reason. Or turn it off. Applies from the next run.
+  - **Colorblind-safe colors:** difficulty tags, mini-boards and 1 AWAY stamps switch to Okabe-Ito colors that run light to dark as well as by hue. Tags always show their number, Lockout squares always name who took them.
+  - **Bingo button:** put it back in its default spot by the run timer (it's moved by dragging it).
 
 ## 5. Seeds and determinism
 

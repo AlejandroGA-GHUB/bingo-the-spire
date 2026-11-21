@@ -37,7 +37,21 @@ internal static class BingoStyle
     public static readonly Color Unpicked = Color.FromHtml("#b9ad97");
 
     /// <summary>One color per difficulty 1-5: teal, blue, purple, orange, red.</summary>
-    public static Color Difficulty(int difficulty) => difficulty switch
+    /// <summary>Use the colorblind-safe palette (Okabe-Ito colors), from the player's settings.</summary>
+    public static bool ColorblindSafe { get; set; }
+
+    /// <summary>Filled squares on mini-boards.</summary>
+    public static Color MiniFilled => ColorblindSafe ? Color.FromHtml("#0072b2") : Filled;
+
+    /// <summary>Squares in a finished line on mini-boards.</summary>
+    public static Color MiniLine => ColorblindSafe ? Color.FromHtml("#e69f00") : Gold;
+
+    /// <summary>"1 AWAY!" stamps: yours, and a Lockout rival's.</summary>
+    public static Color OneAwayInk => ColorblindSafe ? Color.FromHtml("#d55e00") : Color.FromHtml("#d9730d");
+
+    public static Color RivalOneAwayInk => ColorblindSafe ? Color.FromHtml("#7a3f8f") : TakenInk;
+
+    public static Color Difficulty(int difficulty) => ColorblindSafe ? SafeDifficulty(difficulty) : difficulty switch
     {
         <= 1 => new Color(0.30f, 0.80f, 0.68f),
         2 => new Color(0.33f, 0.62f, 0.95f),
@@ -45,6 +59,16 @@ internal static class BingoStyle
         4 => new Color(0.97f, 0.58f, 0.28f),
         _ => new Color(0.95f, 0.33f, 0.43f),
     };
+
+    /// <summary>Light to dark as well as different hues, so they stay apart without color too.</summary>
+    private static Color SafeDifficulty(int difficulty) => Color.FromHtml(difficulty switch
+    {
+        <= 1 => "#56b4e9",
+        2 => "#009e73",
+        3 => "#0072b2",
+        4 => "#e69f00",
+        _ => "#cc79a7",
+    });
 
     public static StyleBoxFlat Box(Color background, int radius, int border, Color borderColor, int padding,
         Color? glow = null, int glowSize = 0)

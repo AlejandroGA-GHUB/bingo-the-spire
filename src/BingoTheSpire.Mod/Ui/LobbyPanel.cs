@@ -90,7 +90,11 @@ internal sealed class LobbyPanel
         _seedHint = Body("", 15, BingoStyle.PageInkSoft);
         left.AddChild(_seedHint);
         left.AddChild(Spacer(8));
-        left.AddChild(HistoryBook.Button("Past runs", () => HistoryBook.ShowHistory(screen)));
+        var links = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        links.AddThemeConstantOverride("separation", 10);
+        left.AddChild(links);
+        links.AddChild(HistoryBook.Button("Past runs", () => HistoryBook.ShowHistory(screen)));
+        links.AddChild(HistoryBook.Button("Settings", () => SettingsBook.Show(screen, settings)));
 
         // Right page: what the chosen mode means.
         var right = Column();

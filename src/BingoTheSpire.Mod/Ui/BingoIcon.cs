@@ -115,7 +115,7 @@ internal sealed class BingoIcon
         {
             var x = start + i % _size * (cell + gap);
             var y = start + i / _size * (cell + gap);
-            var color = _inLines.Contains(i) ? BingoStyle.Gold : _filled.Contains(i) ? BingoStyle.Filled : BingoStyle.ParchmentDark;
+            var color = _inLines.Contains(i) ? BingoStyle.MiniLine : _filled.Contains(i) ? BingoStyle.MiniFilled : BingoStyle.ParchmentDark;
             _art.DrawRect(new Rect2(x, y, cell, cell), color);
         }
     }

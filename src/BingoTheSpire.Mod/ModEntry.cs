@@ -42,6 +42,7 @@ public static class ModEntry
             var recorder = new RunRecorder();
             Events.Subscribe(recorder.OnEvent);
             Settings = BingoSettings.Load();
+            Ui.BingoStyle.ColorblindSafe = Settings.ColorblindSafe;
             Bingo = new BingoRuntime(Settings);
             Bingo.SessionStarted += session => Callable.From(() =>
                 BingoOverlay.Current?.Bind(session, Bingo.LocalPlayerId)).CallDeferred();

@@ -7,8 +7,8 @@ namespace BingoTheSpire.Mod;
 
 /// <summary>
 /// Player settings, kept in <c>settings.json</c> in the mod's data folder. Read with JsonNode so
-/// no reflection-based serialization runs inside the game. Until the in-game settings screen
-/// exists, players edit this file (the icon position is saved by dragging the icon).
+/// no reflection-based serialization runs inside the game. Changed from the bingo settings book
+/// (lobby), except the icon position, which is saved by dragging the icon.
 /// </summary>
 internal sealed class BingoSettings
 {
@@ -22,6 +22,9 @@ internal sealed class BingoSettings
     /// resolution changes). Null keeps the default spot next to the run timer.
     /// </summary>
     public (float X, float Y)? IconPosition { get; private set; }
+
+    /// <summary>Colors that stay apart for red-green colorblindness (difficulty tags, mini-boards, stamps).</summary>
+    public bool ColorblindSafe { get; private set; }
 
     /// <summary>Bingo on or off for new runs. Remembered between runs.</summary>
     public bool Enabled { get; private set; } = true;
@@ -63,6 +66,10 @@ internal sealed class BingoSettings
             {
                 settings.Enabled = root["enabled"]!.GetValue<bool>();
             }
+            if (root["colorblindSafe"]?.GetValueKind() is JsonValueKind.True or JsonValueKind.False)
+            {
+                settings.ColorblindSafe = root["colorblindSafe"]!.GetValue<bool>();
+            }
             if (root["mode"]?.GetValueKind() == JsonValueKind.String
                 && Enum.TryParse<BingoMode>(root["mode"]!.GetValue<string>(), ignoreCase: true, out var mode))
             {
@@ -79,6 +86,19 @@ internal sealed class BingoSettings
             BingoLog.Warn($"couldn't read {FilePath}, using defaults: {ex.Message}");
         }
         return settings;
+    }
+
+    /// <summary>A Godot key name (e.g. "B", "F6"), or null to turn the hotkey off.</summary>
+    public void SetHotkey(string? key)
+    {
+        Hotkey = key;
+        Save();
+    }
+
+    public void SetColorblindSafe(bool on)
+    {
+        ColorblindSafe = on;
+        Save();
     }
 
     public void SetIconPosition((float X, float Y)? position)
@@ -111,10 +131,11 @@ internal sealed class BingoSettings
                 ["enabled"] = Enabled,
                 ["mode"] = Mode.ToString(),
                 ["hotkey"] = Hotkey ?? "off",
+                ["colorblindSafe"] = ColorblindSafe,
                 ["iconPosition"] = IconPosition is { } p
                     ? new JsonArray(Math.Round(p.X, 4), Math.Round(p.Y, 4))
                     : null,
-                ["_help"] = "hotkey: a key name like \"B\" or \"F6\", or \"off\". iconPosition: set by dragging the bingo icon; right-click the icon to reset it.",
+                ["_help"] = "Easiest to change from Settings in the lobby's bingo panel. hotkey: a key name like \"B\" or \"F6\", or \"off\". iconPosition: set by dragging the bingo icon; right-click the icon to reset it.",
             };
             File.WriteAllText(FilePath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         }

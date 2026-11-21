@@ -475,7 +475,7 @@ internal sealed class BoardPanel
             _taken.OffsetBottom = -3;
             Note.Paper.AddChild(_taken);
 
-            _oneAway = PaperNote.Stamp("1 AWAY!", OneAwayInk, 13, 7);
+            _oneAway = PaperNote.Stamp("1 AWAY!", BingoStyle.OneAwayInk, 13, 7);
             _oneAwayText = (Label)_oneAway.GetChild(0);
             _oneAway.Visible = false;
             PaperNote.PinTo(_oneAway, Control.LayoutPreset.TopRight, 6, -10);
@@ -541,7 +541,6 @@ internal sealed class BoardPanel
             Note.Slot.TooltipText = (filled || _isTaken) && Evidence.Length > 0 ? Evidence : "";
         }
 
-        private static readonly Color OneAwayInk = Color.FromHtml("#d9730d");
 
         /// <summary>
         /// Marks a square that would finish a line: null for none, "" for this board's player (or team),
@@ -552,7 +551,7 @@ internal sealed class BoardPanel
             var show = who != null && !_filled && !_isTaken;
             if (show)
             {
-                var ink = who!.Length == 0 ? OneAwayInk : BingoStyle.TakenInk;
+                var ink = who!.Length == 0 ? BingoStyle.OneAwayInk : BingoStyle.RivalOneAwayInk;
                 _oneAwayText.Text = who.Length == 0 ? "1 AWAY!" : $"{(who.Length > 9 ? who[..8] + "…" : who).ToUpperInvariant()} 1 AWAY";
                 _oneAwayText.AddThemeColorOverride("font_color", ink);
                 if (_oneAway.GetThemeStylebox("panel") is StyleBoxFlat box)
