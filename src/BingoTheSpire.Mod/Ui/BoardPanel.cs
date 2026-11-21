@@ -19,6 +19,8 @@ internal sealed class BoardPanel
     private readonly HashSet<int> _fresh = [];
     private BookFrame? _book;
     private Label? _stats;
+    private HBoxContainer? _players;
+    private VBoxContainer? _feed;
     private Label? _code;
     private GridContainer? _grid;
     private Control? _strikes;
@@ -109,7 +111,28 @@ internal sealed class BoardPanel
         info.AddChild(_stats);
         _code = BingoStyle.Ink($"Board: {board.Code}  ·  {modeName}", BingoFonts.NoteBold, 15, BingoStyle.NameplateText with { A = 0.8f });
         info.AddChild(_code);
-        content.AddChild(Nameplate("BINGO!", info));
+        // The nameplate stays centered; Versus previews of each player's board sit at the right.
+        var header = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        content.AddChild(header);
+        header.AddChild(Nameplate("BINGO!", info));
+        _players = new HBoxContainer
+        {
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            Alignment = BoxContainer.AlignmentMode.End,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        _players.AddThemeConstantOverride("separation", 8);
+        header.AddChild(_players);
+        // Co-op: the latest happenings, at the left.
+        _feed = new VBoxContainer
+        {
+            MouseFilter = Control.MouseFilterEnum.Pass,
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            CustomMinimumSize = new Vector2(FeedWidth, 0),
+        };
+        _feed.AddThemeConstantOverride("separation", 0);
+        header.AddChild(_feed);
 
         _grid = new GridContainer { Columns = board.Size, MouseFilter = Control.MouseFilterEnum.Ignore };
         _grid.AddThemeConstantOverride("h_separation", Gap);
@@ -139,10 +162,51 @@ internal sealed class BoardPanel
         }
     }
 
+    private const float FeedWidth = 250;
+
+    /// <summary>Co-op activity feed: the newest lines first. Hover shows a longer list.</summary>
+    public void SetFeed(IReadOnlyList<string> newestFirst)
+    {
+        if (_feed == null)
+        {
+            return;
+        }
+        foreach (var child in _feed.GetChildren())
+        {
+            child.QueueFree();
+        }
+        _feed.TooltipText = string.Join('\n', newestFirst.Take(12));
+        if (newestFirst.Count == 0)
+        {
+            return;
+        }
+        _feed.AddChild(BingoStyle.Ink("Latest", BingoFonts.Heading, 14, BingoStyle.PageInkSoft));
+        foreach (var (text, i) in newestFirst.Take(3).Select((t, i) => (t, i)))
+        {
+            var line = BingoStyle.Ink(text, BingoFonts.NoteBold, 13, i == 0 ? BingoStyle.PageInk : BingoStyle.PageInkSoft);
+            line.ClipText = true;
+            line.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+            line.CustomMinimumSize = new Vector2(FeedWidth, 0);
+            line.MouseFilter = Control.MouseFilterEnum.Pass;
+            _feed.AddChild(line);
+        }
+    }
+
+    /// <summary>Versus: the row of player previews (empty for one player, Lockout and Team).</summary>
+    public void SetPlayers(IReadOnlyList<PlayerPreview> players, Action<ulong> pick)
+    {
+        if (_players != null)
+        {
+            PlayerPreviews.Fill(_players, _size, players, pick);
+        }
+    }
+
     /// <param name="others">Lockout only: squares another player took, with their name.</param>
     /// <param name="lines">Finished lines (indices into <see cref="BoardRules.Lines"/>).</param>
+    /// <param name="whose">Whose board this is when it isn't yours, for the nameplate.</param>
+    /// <param name="oneAway">Squares that would finish a line: "" for this board's player, or (Lockout) a rival's name.</param>
     public void Update(IReadOnlySet<int> filled, IReadOnlySet<int> inLines, IReadOnlyList<int> lines, int total,
-        IReadOnlyDictionary<int, string>? others = null)
+        IReadOnlyDictionary<int, string>? others = null, string? whose = null, IReadOnlyDictionary<int, string>? oneAway = null)
     {
         foreach (var line in lines.Where(l => !_struck.ContainsKey(l)))
         {
@@ -160,14 +224,15 @@ internal sealed class BoardPanel
         {
             var index = cell.Square.Index;
             cell.SetState(filled.Contains(index), inLines.Contains(index), others?.GetValueOrDefault(index));
+            cell.SetOneAway(oneAway?.GetValueOrDefault(index));
         }
         if (_stats != null)
         {
-            _stats.Text = $"{filled.Count} / {total} squares" + (lines.Count switch
+            _stats.Text = (whose != null ? $"{whose}'s board  ·  " : "") + $"{filled.Count} / {total} squares" + (lines.Count switch
             {
                 0 => "",
                 1 => "  ·  1 line!",
-                _ => $"  ·  {lines} lines!",
+                _ => $"  ·  {lines.Count} lines!",
             });
         }
     }
@@ -358,6 +423,9 @@ internal sealed class BoardPanel
         private readonly PanelContainer _stamp;
         private readonly Label _stampText;
         private readonly Label _taken;
+        private readonly PanelContainer _oneAway;
+        private readonly Label _oneAwayText;
+        private Tween? _oneAwayPulse;
         private bool _filled;
         private bool _isTaken;
 
@@ -406,6 +474,12 @@ internal sealed class BoardPanel
             _taken.OffsetTop = -22;
             _taken.OffsetBottom = -3;
             Note.Paper.AddChild(_taken);
+
+            _oneAway = PaperNote.Stamp("1 AWAY!", OneAwayInk, 13, 7);
+            _oneAwayText = (Label)_oneAway.GetChild(0);
+            _oneAway.Visible = false;
+            PaperNote.PinTo(_oneAway, Control.LayoutPreset.TopRight, 6, -10);
+            Note.Paper.AddChild(_oneAway);
 
             SetState(filled: false, inLine: false);
         }
@@ -465,6 +539,42 @@ internal sealed class BoardPanel
 
             // Hover only says what happened and where; the goal itself is already on the note.
             Note.Slot.TooltipText = (filled || _isTaken) && Evidence.Length > 0 ? Evidence : "";
+        }
+
+        private static readonly Color OneAwayInk = Color.FromHtml("#d9730d");
+
+        /// <summary>
+        /// Marks a square that would finish a line: null for none, "" for this board's player (or team),
+        /// or a Lockout rival's name. It pulses gently so it's easy to spot.
+        /// </summary>
+        public void SetOneAway(string? who)
+        {
+            var show = who != null && !_filled && !_isTaken;
+            if (show)
+            {
+                var ink = who!.Length == 0 ? OneAwayInk : BingoStyle.TakenInk;
+                _oneAwayText.Text = who.Length == 0 ? "1 AWAY!" : $"{(who.Length > 9 ? who[..8] + "…" : who).ToUpperInvariant()} 1 AWAY";
+                _oneAwayText.AddThemeColorOverride("font_color", ink);
+                if (_oneAway.GetThemeStylebox("panel") is StyleBoxFlat box)
+                {
+                    box.BorderColor = ink;
+                }
+            }
+            if (show == _oneAway.Visible)
+            {
+                return;
+            }
+            _oneAway.Visible = show;
+            _oneAwayPulse?.Kill();
+            _oneAwayPulse = null;
+            _oneAway.Scale = Vector2.One;
+            if (show)
+            {
+                BingoStyle.CenterPivot(_oneAway);
+                _oneAwayPulse = _oneAway.CreateTween().SetLoops();
+                _oneAwayPulse.TweenProperty(_oneAway, "scale", new Vector2(1.08f, 1.08f), 0.6).SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+                _oneAwayPulse.TweenProperty(_oneAway, "scale", Vector2.One, 0.6).SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+            }
         }
 
         public void SetProgress(int current, int target)

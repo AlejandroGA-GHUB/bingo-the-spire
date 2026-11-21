@@ -56,6 +56,29 @@ public static class BoardRules
         _ => "Diagonal ↙",
     };
 
+    /// <summary>
+    /// "One away" squares (spec 4.5): empty squares that would finish a line for a player who has
+    /// <paramref name="filled"/>. A line with a <paramref name="blocked"/> square (Lockout: taken by
+    /// someone else) can't be finished, so it never counts.
+    /// </summary>
+    public static IReadOnlySet<int> OneAway(int size, IReadOnlySet<int> filled, IReadOnlySet<int>? blocked = null)
+    {
+        var result = new HashSet<int>();
+        foreach (var line in Lines(size))
+        {
+            if (blocked != null && line.Any(blocked.Contains))
+            {
+                continue;
+            }
+            var missing = line.Where(cell => !filled.Contains(cell)).ToList();
+            if (missing.Count == 1)
+            {
+                result.Add(missing[0]);
+            }
+        }
+        return result;
+    }
+
     /// <summary>Every row, column and both diagonals, as lists of cell indexes (row-major).</summary>
     public static IReadOnlyList<int[]> Lines(int size)
     {
