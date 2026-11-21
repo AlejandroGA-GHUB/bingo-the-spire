@@ -3,7 +3,7 @@
 // retuning goals, tiers or tags). Never reuse an id for a different goal.
 // Difficulty: 1 = happens in most runs, 3 = needs some planning, 5 = rare.
 {
-  "version": 1,
+  "version": 2,
   "goals": [
     // ---- Cards ----------------------------------------------------------------------------
     { "id": "cards_in_turn", "text": "Play {n}+ cards in a single turn", "detector": "CardsPlayedInTurn", "tags": ["cards-per-turn"],
@@ -51,13 +51,13 @@
     { "id": "flawless_hallways", "text": "Win {n} normal fights without losing HP", "detector": "FlawlessHallways", "tags": ["flawless"],
       "tiers": [ { "difficulty": 1, "params": { "n": 3 } }, { "difficulty": 2, "params": { "n": 6 } }, { "difficulty": 3, "params": { "n": 10 } } ] },
     { "id": "quick_win", "text": "Win a fight by turn {n}", "detector": "QuickWin", "tags": ["speed"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 2 } }, { "difficulty": 3, "params": { "n": 1 } } ] },
+      "tiers": [ { "difficulty": 1, "params": { "n": 2 } }, { "difficulty": 5, "params": { "n": 1 } } ] },
     { "id": "low_hp_win", "text": "Win a fight with {n} HP or less", "detector": "LowHpWin", "tags": ["low-hp"],
       "tiers": [ { "difficulty": 2, "params": { "n": 10 } }, { "difficulty": 3, "params": { "n": 5 } }, { "difficulty": 4, "params": { "n": 1 } } ] },
     { "id": "survive_hit", "text": "Lose {n}+ HP to a single hit and survive", "detector": "SurviveHit", "tags": ["hit-taken"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 15 } }, { "difficulty": 2, "params": { "n": 25 } }, { "difficulty": 3, "params": { "n": 40 } } ] },
+      "tiers": [ { "difficulty": 1, "params": { "n": 10 } }, { "difficulty": 3, "params": { "n": 20 } }, { "difficulty": 4, "params": { "n": 30 } } ] },
     { "id": "elites_defeated", "text": "Defeat {n} elites", "detector": "ElitesDefeated", "tags": ["elites"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 2 } }, { "difficulty": 2, "params": { "n": 4 } }, { "difficulty": 3, "params": { "n": 6 } }, { "difficulty": 4, "params": { "n": 8 } } ] },
+      "tiers": [ { "difficulty": 1, "params": { "n": 2 } }, { "difficulty": 2, "params": { "n": 4 } }, { "difficulty": 3, "params": { "n": 5 } }, { "difficulty": 4, "params": { "n": 7 } } ] },
     { "id": "bosses_defeated", "text": "Defeat {n} bosses", "detector": "BossesDefeated", "tags": ["bosses"], "excludeGameModes": ["Blitz"],
       "tiers": [ { "difficulty": 3, "params": { "n": 2 } }, { "difficulty": 4, "params": { "n": 3 } } ] },
 
@@ -81,7 +81,7 @@
     { "id": "relics_bought", "text": "Buy {n} relics from shops", "detector": "RelicsBought", "tags": ["shop"],
       "tiers": [ { "difficulty": 2, "params": { "n": 2 } }, { "difficulty": 3, "params": { "n": 3 } }, { "difficulty": 4, "params": { "n": 4 } } ] },
     { "id": "card_removals", "text": "Remove {n} cards at shops", "detector": "CardsRemovedAtShop", "tags": ["shop"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 2 } }, { "difficulty": 2, "params": { "n": 3 } }, { "difficulty": 3, "params": { "n": 4 } } ] },
+      "tiers": [ { "difficulty": 1, "params": { "n": 1 } }, { "difficulty": 3, "params": { "n": 2 } }, { "difficulty": 4, "params": { "n": 3 } } ] },
     { "id": "gold_held", "text": "Have {n}+ gold at once", "detector": "GoldHeld", "tags": ["gold"],
       "tiers": [ { "difficulty": 1, "params": { "n": 250 } }, { "difficulty": 2, "params": { "n": 400 } }, { "difficulty": 3, "params": { "n": 600 } }, { "difficulty": 4, "params": { "n": 900 } } ] },
     { "id": "rest_smiths", "text": "Upgrade a card at {n} rest sites", "detector": "RestSmiths", "tags": ["rest"],

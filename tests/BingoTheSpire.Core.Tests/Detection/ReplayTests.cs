@@ -43,7 +43,8 @@ public class ReplayTests
     /// <summary>
     /// Every tier this run completes, checked by hand against the log: e.g. 10 draws in one turn
     /// came from Gambler's Brew, 5 energy from Bloodletting, and the two exact kills are
-    /// Phantasmal Gardeners taking 8 with 0 overkill. The quick and flawless wins are the
+    /// Phantasmal Gardeners taking 8 with 0 overkill, and the card removal is at the floor 13
+    /// shop. The quick and flawless wins are the
     /// console-skipped fights, which count like any other win.
     /// </summary>
     [Fact]
@@ -52,7 +53,7 @@ public class ReplayTests
         var done = Replay("main-ironclad-act1.jsonl");
         Assert.Equal(
         [
-            "attacks_in_turn:4", "draw_in_turn:10", "draw_in_turn:8", "elites_defeated:2", "energy_in_turn:5",
+            "attacks_in_turn:4", "card_removals:1", "draw_in_turn:10", "draw_in_turn:8", "elites_defeated:2", "energy_in_turn:5",
             "exact_kills:2", "flawless_elite:-", "flawless_hallways:3", "gold_held:250", "gold_held:400",
             "quick_win:1", "quick_win:2", "shop_spree:2", "shop_spree:3", "shuffles_in_combat:2", "shuffles_in_combat:3",
         ], done.Keys.Order(StringComparer.Ordinal));
@@ -65,6 +66,6 @@ public class ReplayTests
     public void ContinuedRun_EndingInDeath_CompletesExactlyWhatHappened()
     {
         var done = Replay("main-ironclad-continue-death.jsonl");
-        Assert.Equal(["potions_in_combat:2", "survive_hit:15"], done.Keys.Order(StringComparer.Ordinal));
+        Assert.Equal(["potions_in_combat:2", "survive_hit:10"], done.Keys.Order(StringComparer.Ordinal));
     }
 }
