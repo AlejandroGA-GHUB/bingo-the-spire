@@ -141,11 +141,8 @@ internal static class HistoryBook
             right.AddChild(chips);
         }
 
-        book.Content.AddChild(Footer(Button("Past runs", () =>
-        {
-            book.Hide();
-            ShowHistory(parent);
-        })));
+        // Past runs opens over the results, which come back when it's closed (spec 4.4, one book at a time).
+        book.Content.AddChild(Footer(Button("Past runs", () => ShowHistory(parent))));
         book.Show();
     }
 
@@ -228,8 +225,8 @@ internal static class HistoryBook
 
     private static (BookFrame Book, VBoxContainer Left, VBoxContainer Right) Open(Control parent, string name, string title, string? info)
     {
-        // Only one of these open at a time.
-        foreach (var old in parent.GetChildren().Where(c => c.Name == "BingoTheSpireResults" || c.Name == "BingoTheSpireHistory"))
+        // Only one results book and one history book at a time. History can sit over the results.
+        foreach (var old in parent.GetChildren().Where(c => c.Name == name))
         {
             old.QueueFree();
         }

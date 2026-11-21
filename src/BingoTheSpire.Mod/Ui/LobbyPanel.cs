@@ -107,7 +107,7 @@ internal sealed class LobbyPanel
                 {
                     leaderboard = GodotObject.IsInstanceValid(screen) && HasLeaderboard(screen);
                 }
-                padHint.Visible = Gamepad.InUse && !leaderboard;
+                padHint.Visible = Gamepad.ControllerActive && !leaderboard;
             }
             hintTree.ProcessFrame += Tick;
         }
@@ -455,7 +455,7 @@ internal sealed class LobbyPanel
         button.AddThemeFontOverride("font", BingoFonts.Heading);
         button.AddThemeFontSizeOverride("font_size", 19);
         // The switch plays the game's tickbox sounds itself, only when it actually flips.
-        return Gamepad.Focusable(button, click: null);
+        return Gamepad.Focusable(button, click: null, ring: Gamepad.InsetRing);
     }
 
     private void Flip(bool on)

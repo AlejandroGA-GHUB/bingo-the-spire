@@ -32,6 +32,26 @@ internal static class Gamepad
         }
     }
 
+    /// <summary>
+    /// True while the game's current input is a controller (it switches back when the mouse or
+    /// keyboard is used): the same rule the game uses to show its button glyphs. Read by name, since
+    /// the enum's numbers can differ between branches.
+    /// </summary>
+    public static bool ControllerActive
+    {
+        get
+        {
+            try
+            {
+                return NControllerManager.Instance?.InputType.ToString() == "Controller";
+            }
+            catch
+            {
+                return false;
+            }
+        }
+    }
+
     /// <summary>The controller button that opens the board, if one is free.</summary>
     public static JoyButton? BoardButton { get; private set; }
 
@@ -188,7 +208,7 @@ internal static class Gamepad
             try
             {
                 // A keyboard key can also be bound to the game's action: only react while a controller is in use.
-                if (InUse && actions.Any(a => InputMap.HasAction(a) && Input.IsActionJustPressed(a)) && when())
+                if (ControllerActive && actions.Any(a => InputMap.HasAction(a) && Input.IsActionJustPressed(a)) && when())
                 {
                     press();
                 }
@@ -246,19 +266,32 @@ internal static class Gamepad
 
     private static readonly StyleBoxEmpty NoRing = new();
 
+    /// <summary>A ring drawn inside the control, for controls in a clipped box (the ON / OFF switch).</summary>
+    public static readonly StyleBoxFlat InsetRing = MakeInsetRing();
+
+    private static StyleBoxFlat MakeInsetRing()
+    {
+        var box = new StyleBoxFlat { DrawCenter = false, BorderColor = BingoStyle.Gold, AntiAliasing = true };
+        box.SetBorderWidthAll(3);
+        box.SetCornerRadiusAll(7);
+        return box;
+    }
+
     /// <summary>
     /// Lets a button be reached with the controller, with a gold ring when focused, and gives it the
     /// game's hover and click sounds (<paramref name="click"/> null for buttons that play their own).
     /// </summary>
-    public static T Focusable<T>(T button, string? click = Sfx.Click) where T : BaseButton
+    /// <param name="ring">The focus ring to use, for buttons where the usual one would be clipped.</param>
+    public static T Focusable<T>(T button, string? click = Sfx.Click, StyleBox? ring = null) where T : BaseButton
     {
+        var focusRing = ring ?? FocusRing;
         button.FocusMode = Control.FocusModeEnum.All;
-        button.AddThemeStyleboxOverride("focus", FocusRing);
+        button.AddThemeStyleboxOverride("focus", focusRing);
         // A mouse click shouldn't leave a ring behind, so the ring only shows while using a controller.
         // Never drop the focus here instead: a button that loses focus mid-click cancels the click.
         button.FocusEntered += () =>
         {
-            button.AddThemeStyleboxOverride("focus", InUse ? FocusRing : NoRing);
+            button.AddThemeStyleboxOverride("focus", InUse ? focusRing : NoRing);
             if (InUse)
             {
                 Sfx.Play(Sfx.Hover);
@@ -272,6 +305,17 @@ internal static class Gamepad
             }
         };
         button.Pressed += () => Sfx.Play(click);
+        // Godot buttons only react to ui_accept, but with Steam Input the controller's Accept arrives
+        // as the game's ui_confirm / ui_select. ui_accept itself is left to Godot, so nothing fires twice.
+        button.GuiInput += input =>
+        {
+            if (!button.Disabled && input is not InputEventMouse && !input.IsAction("ui_accept")
+                && AcceptActions.Any(a => a != "ui_accept" && InputMap.HasAction(a) && input.IsActionPressed(a)))
+            {
+                button.AcceptEvent();
+                button.EmitSignal(BaseButton.SignalName.Pressed);
+            }
+        };
         return button;
     }
 
