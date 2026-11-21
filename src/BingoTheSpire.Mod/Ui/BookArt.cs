@@ -12,6 +12,10 @@ internal static class BookArt
     private const float CurveDepth = 0.055f; // of the width
     private const int Samples = 64;
 
+    // Gap between the page bottoms and the book's bottom edge, at the spine. Leaves the stacked
+    // page layers inside the cover at the bottom corners too.
+    private const float PageBottom = 42;
+
     private static readonly Color CoverLight = Color.FromHtml("#7a4128");
     private static readonly Color CoverMid = Color.FromHtml("#5a2e1c");
     private static readonly Color CoverDark = Color.FromHtml("#3a1c11");
@@ -34,7 +38,7 @@ internal static class BookArt
 
     /// <summary>Space to leave around the book's content: left/right, top, bottom.</summary>
     public static (float Side, float Top, float Bottom) Insets(float width) =>
-        (0.065f * width, CurveDepth * width + 34, CurveDepth * width + 48);
+        (0.065f * width, CurveDepth * width + 34, CurveDepth * width + PageBottom + 18);
 
     /// <summary>The book width that fits content of this width between the side insets.</summary>
     public static float WidthFor(float contentWidth) => contentWidth / 0.87f;
@@ -87,7 +91,7 @@ internal static class BookArt
             Outline(canvas, page.Outline, PageEdge, 1.2f);
         }
 
-        canvas.DrawLine(new Vector2(mid, 14 + d), new Vector2(mid, h - 30), Spine, 1.5f, antialiased: true);
+        canvas.DrawLine(new Vector2(mid, 14 + d), new Vector2(mid, h - PageBottom), Spine, 1.5f, antialiased: true);
     }
 
     private sealed record PageShape(Vector2[] Top, Vector2[] Bottom, Vector2[] Outline);
@@ -95,7 +99,7 @@ internal static class BookArt
     /// <summary>One page, as matching top and bottom curves sampled from the spine outwards.</summary>
     private static PageShape Page(float w, float h, float d, bool left, float dx, float dy)
     {
-        float top = 14, bot = h - 30, mid = w / 2;
+        float top = 14, bot = h - PageBottom, mid = w / 2;
         float ox = 0.034f * w - dx, c1 = 0.392f * w - dx, c2 = 0.172f * w - dx;
         float X(float x) => left ? x : w - x;
 

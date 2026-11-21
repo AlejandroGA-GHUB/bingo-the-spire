@@ -255,13 +255,13 @@ internal sealed class BoardPanel
             Note = new PaperNote(size, tilt);
             Note.SetTag(BingoStyle.Difficulty(square.Difficulty), square.Difficulty.ToString());
             Note.SetOnSpine(onSpine);
-            Note.SetMargins(left: 24, top: 12, right: 12, bottom: 16);
+            Note.SetMargins(left: 24, top: 10, right: 12, bottom: TextBottom);
 
-            _text = BingoStyle.Ink(square.Text, BingoFonts.Note, 18, BingoStyle.PageInk);
+            _text = BingoStyle.Ink(square.Text, BingoFonts.Note, FitFontSize(square.Text, size), BingoStyle.PageInk);
             _text.HorizontalAlignment = HorizontalAlignment.Center;
             _text.VerticalAlignment = VerticalAlignment.Center;
             _text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            _text.AddThemeConstantOverride("line_spacing", -2);
+            _text.AddThemeConstantOverride("line_spacing", TextLineSpacing);
             Note.Content.AddChild(_text);
 
             var barRow = new HBoxContainer { Visible = false, MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -301,6 +301,28 @@ internal sealed class BoardPanel
         public BoardSquare Square { get; }
 
         public PaperNote Note { get; }
+
+        // Room under the text for the progress bar, so long goals never run into it.
+        private const int TextBottom = 20;
+        private const int TextLineSpacing = -2;
+
+        /// <summary>The largest size, from 18 down to 12, at which the goal text fits on its note.</summary>
+        private static int FitFontSize(string text, Vector2 size)
+        {
+            var width = size.X - 24 - 12;
+            var height = size.Y - 10 - TextBottom;
+            var font = BingoFonts.Note;
+            for (var fontSize = 18; fontSize > 12; fontSize--)
+            {
+                var measured = font.GetMultilineStringSize(text, HorizontalAlignment.Center, width, fontSize);
+                var lines = Math.Max(1, (int)Math.Round(measured.Y / font.GetHeight(fontSize)));
+                if (measured.Y + TextLineSpacing * (lines - 1) <= height)
+                {
+                    return fontSize;
+                }
+            }
+            return 12;
+        }
 
         public string Evidence { get; set; } = "";
 
