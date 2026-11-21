@@ -53,12 +53,12 @@ public class ReplayTests
         var done = Replay("main-ironclad-act1.jsonl");
         Assert.Equal(
         [
-            "attacks_in_turn:4", "card_removals:1", "draw_in_turn:10", "draw_in_turn:8", "elites_defeated:2", "energy_in_turn:5",
-            "exact_kills:2", "flawless_elite:-", "flawless_hallways:3", "gold_held:250", "gold_held:400",
+            "attacks_in_turn:4", "card_removals:1", "cards_in_turn:6", "draw_in_turn:9", "elites_defeated:2", "energy_in_turn:4", "energy_in_turn:5",
+            "exact_kills:2", "flawless_elite:-", "flawless_hallways:3", "gold_held:250", "gold_held:350",
             "quick_win:1", "quick_win:2", "shop_spree:2", "shop_spree:3", "shuffles_in_combat:2", "shuffles_in_combat:3",
         ], done.Keys.Order(StringComparer.Ordinal));
         Assert.Equal("bought 3 items in one shop visit", done["shop_spree:3"]);
-        Assert.Equal("held 408 gold", done["gold_held:400"]);
+        Assert.Equal("held 371 gold", done["gold_held:350"]);
     }
 
     /// <summary>Continued at floor 13, used two potions in an elite, then died to it.</summary>

@@ -3,23 +3,25 @@
 // retuning goals, tiers or tags). Never reuse an id for a different goal.
 // Difficulty: 1 = happens in most runs, 3 = needs some planning, 5 = rare.
 {
-  "version": 5,
+  "version": 6,
   "goals": [
     // ---- Cards ----------------------------------------------------------------------------
     { "id": "cards_in_turn", "text": "Play {n}+ cards in a single turn", "detector": "CardsPlayedInTurn", "tags": ["cards-per-turn"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 7 } }, { "difficulty": 2, "params": { "n": 9 } }, { "difficulty": 3, "params": { "n": 12 } }, { "difficulty": 4, "params": { "n": 15 } } ] },
+      "tiers": [ { "difficulty": 1, "params": { "n": 6 } }, { "difficulty": 2, "params": { "n": 8 } }, { "difficulty": 3, "params": { "n": 9 }, "team": { "n": 17 } }, { "difficulty": 4, "params": { "n": 10 }, "team": { "n": 20 } } ] },
     { "id": "attacks_in_turn", "text": "Play {n}+ Attacks in a single turn", "detector": "AttacksPlayedInTurn", "tags": ["attacks"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 4 } }, { "difficulty": 2, "params": { "n": 6 } }, { "difficulty": 3, "params": { "n": 8 } }, { "difficulty": 4, "params": { "n": 10 } } ] },
+      "tiers": [ { "difficulty": 1, "params": { "n": 4 } }, { "difficulty": 2, "params": { "n": 5 } }, { "difficulty": 3, "params": { "n": 6 } }, { "difficulty": 4, "params": { "n": 7 }, "team": { "n": 14 } } ] },
     { "id": "skills_in_turn", "text": "Play {n}+ Skills in a single turn", "detector": "SkillsPlayedInTurn", "tags": ["skills"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 4 } }, { "difficulty": 2, "params": { "n": 5 } }, { "difficulty": 3, "params": { "n": 7 } }, { "difficulty": 4, "params": { "n": 9 } } ] },
+      "tiers": [ { "difficulty": 1, "params": { "n": 4 } }, { "difficulty": 2, "params": { "n": 5 } }, { "difficulty": 3, "params": { "n": 6 } }, { "difficulty": 4, "params": { "n": 7 }, "team": { "n": 14 } } ] },
     { "id": "powers_in_combat", "text": "Play {n}+ Powers in a single fight", "detector": "PowersPlayedInCombat", "tags": ["powers"],
       "tiers": [ { "difficulty": 1, "params": { "n": 2 } }, { "difficulty": 2, "params": { "n": 3 } }, { "difficulty": 3, "params": { "n": 4 } }, { "difficulty": 4, "params": { "n": 6 } } ] },
     { "id": "draw_in_turn", "text": "Draw {n}+ cards in a single turn", "detector": "CardsDrawnInTurn", "tags": ["draw"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 8 } }, { "difficulty": 2, "params": { "n": 10 } }, { "difficulty": 3, "params": { "n": 14 } }, { "difficulty": 4, "params": { "n": 20 } } ] },
+      "tiers": [ { "difficulty": 2, "params": { "n": 9 } }, { "difficulty": 3, "params": { "n": 12 } }, { "difficulty": 4, "params": { "n": 15 } } ] },
     { "id": "energy_in_turn", "text": "Spend {n}+ energy in a single turn", "detector": "EnergyInTurn", "tags": ["energy"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 5 } }, { "difficulty": 2, "params": { "n": 6 } }, { "difficulty": 3, "params": { "n": 8 } }, { "difficulty": 4, "params": { "n": 10 } } ] },
+      "tiers": [ { "difficulty": 1, "params": { "n": 4 } }, { "difficulty": 2, "params": { "n": 5 } }, { "difficulty": 3, "params": { "n": 6 } }, { "difficulty": 4, "params": { "n": 7 } } ] },
     { "id": "expensive_card", "text": "Play a card that costs {n}+ energy", "detector": "CardCost", "tags": ["energy"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 3 } }, { "difficulty": 3, "params": { "n": 4 } }, { "difficulty": 4, "params": { "n": 5 } } ] },
+      "tiers": [ { "difficulty": 1, "params": { "n": 3 } } ] },
+    { "id": "expensive_cards_in_combat", "text": "Play {n} cards that cost 3+ energy in a single fight", "detector": "ExpensiveCardsInCombat", "tags": ["energy"],
+      "tiers": [ { "difficulty": 3, "params": { "n": 2 } }, { "difficulty": 5, "params": { "n": 3 } } ] },
     { "id": "exhaust_in_combat", "text": "Exhaust {n}+ cards in a single fight", "detector": "CardsExhaustedInCombat", "tags": ["exhaust"],
       "tiers": [ { "difficulty": 1, "params": { "n": 4 } }, { "difficulty": 2, "params": { "n": 6 } }, { "difficulty": 3, "params": { "n": 10 } }, { "difficulty": 4, "params": { "n": 15 } } ] },
     { "id": "shuffles_in_combat", "text": "Shuffle your draw pile {n}+ times in a single fight", "detector": "ShufflesInCombat", "tags": ["shuffle"],
@@ -76,9 +78,9 @@
 
     // ---- Items, shops and rest sites ------------------------------------------------------
     { "id": "potions_in_combat", "text": "Use {n}+ potions in a single fight", "detector": "PotionsInCombat", "tags": ["potions"],
-      "tiers": [ { "difficulty": 2, "params": { "n": 2 } }, { "difficulty": 3, "params": { "n": 3 } }, { "difficulty": 4, "params": { "n": 4 } } ] },
+      "tiers": [ { "difficulty": 2, "params": { "n": 2 } }, { "difficulty": 3, "params": { "n": 3 } }, { "difficulty": 4, "params": { "n": 4 }, "team": { "n": 6 } } ] },
     { "id": "potions_used", "text": "Use {n} potions", "detector": "PotionsUsed", "tags": ["potions"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 5 } }, { "difficulty": 2, "params": { "n": 8 } }, { "difficulty": 3, "params": { "n": 12 } } ] },
+      "tiers": [ { "difficulty": 1, "params": { "n": 3 } }, { "difficulty": 2, "params": { "n": 5 } }, { "difficulty": 3, "params": { "n": 8 } } ] },
     { "id": "shop_spree", "text": "Buy {n}+ items in a single shop visit", "detector": "ShopItemsInVisit", "tags": ["shop"],
       "tiers": [ { "difficulty": 1, "params": { "n": 2 } }, { "difficulty": 2, "params": { "n": 3 } }, { "difficulty": 3, "params": { "n": 5 } } ] },
     { "id": "relics_bought", "text": "Buy {n} relics from shops", "detector": "RelicsBought", "tags": ["shop"],
@@ -86,7 +88,7 @@
     { "id": "card_removals", "text": "Remove {n} cards at shops", "detector": "CardsRemovedAtShop", "tags": ["shop"],
       "tiers": [ { "difficulty": 1, "params": { "n": 1 } }, { "difficulty": 3, "params": { "n": 2 } }, { "difficulty": 4, "params": { "n": 3 } } ] },
     { "id": "gold_held", "text": "Have {n}+ gold at once", "detector": "GoldHeld", "tags": ["gold"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 250 } }, { "difficulty": 2, "params": { "n": 400 } }, { "difficulty": 3, "params": { "n": 600 } }, { "difficulty": 4, "params": { "n": 900 } } ] },
+      "tiers": [ { "difficulty": 1, "params": { "n": 250 } }, { "difficulty": 2, "params": { "n": 350 } }, { "difficulty": 3, "params": { "n": 450 } }, { "difficulty": 4, "params": { "n": 600 } }, { "difficulty": 5, "params": { "n": 750 } } ] },
     { "id": "rest_smiths", "text": "Upgrade a card at {n} rest sites", "detector": "RestSmiths", "tags": ["rest"],
       "tiers": [ { "difficulty": 1, "params": { "n": 2 } }, { "difficulty": 2, "params": { "n": 4 } }, { "difficulty": 3, "params": { "n": 6 } } ] },
     { "id": "rest_heals", "text": "Rest at {n} rest sites", "detector": "RestHeals", "tags": ["rest"],

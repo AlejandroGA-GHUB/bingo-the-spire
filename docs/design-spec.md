@@ -85,6 +85,7 @@ Rules for every mode:
 - **Versus and Lockout: a goal is always completed by one player alone.** Numbers are never added up across players: "Gain 50+ Block in a turn" means *one* player gains 50.
 - **Team: counts and amounts add up across the team,** within the goal's own turn, fight or run. "Draw 35+ cards in a single turn" counts both players' draws in the same turn; "Use 9 potions" counts everyone's potions; "Have 700+ gold" adds every purse.
   - Pooled goals get bigger numbers: each player after the first adds 75% of the solo number, rounded to a clean value (2 players: 5 → 9, 10 → 18, 20 → 35, 400 → 700).
+  - A tier can set its 2-player number by hand instead (`"team": { "n": 6 }`), for fine-tuning; each further player adds the same step again.
   - **Flawless fights pool too:** every player who wins a normal fight without losing HP adds one, so a fight where both stay clean counts twice.
   - The square goes to whoever's share reached the target.
   - **Not pooled** (one moment for one person): single hits, overkill, card cost, surviving one big hit, quick wins, low-HP wins, Strength, buff stacks and different buffs at once. Elites and bosses defeated already count for everyone in the fight.
@@ -225,7 +226,7 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 
 ### 6.5 First goal list (v1)
 The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (version 1, 45 goals):
-- **40 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy and expensive cards; exhaust, shuffles and created cards; damage per turn, single hits, overkill, exact-lethal kills, kills on the first turn of a fight (counted over the run) hits and kills from one card; Block per turn; flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
+- **41 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy, expensive cards and 3+ cost cards per fight; exhaust, shuffles and created cards; damage per turn, single hits, overkill, exact-lethal kills, kills on the first turn of a fight (counted over the run) hits and kills from one card; Block per turn; flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
 - **6 character goals:** Ironclad Strength, Silent Poison, Defect orbs, Necrobinder pet damage and Regent stars.
 - **Still to add,** because they need more events from the game: deck and run state (fully upgraded deck, unique cards, number of relics) and time (act cleared within a time limit). The [v0 draft §6](archive/sts2_bingo_v0_2026-11-20.md) has more ideas.
 

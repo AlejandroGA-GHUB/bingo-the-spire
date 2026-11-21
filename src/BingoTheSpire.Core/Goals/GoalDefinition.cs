@@ -23,7 +23,11 @@ public sealed record GoalDefinition(
 
 /// <param name="Difficulty">1 (happens in most runs) to 5 (rare, needs planning and luck).</param>
 /// <param name="Params">Values filled into the template and passed to the detector. Empty for goals without parameters.</param>
-public sealed record GoalTier(int Difficulty, IReadOnlyDictionary<string, int>? Params = null);
+/// <param name="Team">
+/// Hand-tuned values for a Team board of 2 players, in place of the usual +75% (spec 4.3). Each
+/// further player adds the same step again (solo 4, team 6: 3 players get 8). Only pooled goals use it.
+/// </param>
+public sealed record GoalTier(int Difficulty, IReadOnlyDictionary<string, int>? Params = null, IReadOnlyDictionary<string, int>? Team = null);
 
 /// <param name="Events">Event types the detector needs. The goal is left out if any is unavailable on this game version.</param>
 /// <param name="Character">Game character id, for character-specific goals. Null for general goals.</param>

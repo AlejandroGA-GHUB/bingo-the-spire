@@ -85,6 +85,9 @@ public static class DetectorCatalog
         ["Overkill"] = Threshold([nameof(DamageDealt)],
             (e, ctx) => KillBy(e, ctx) is { } k ? One(k.Player, k.Overkill) : null,
             n => $"overkilled by {n}"),
+        // Energy actually paid: X-cost cards count what was spent, cheapened cards count less.
+        ["ExpensiveCardsInCombat"] = Counter(Scope.Combat, [nameof(CardPlayed), nameof(CombatStarting)],
+            (e, ctx) => e is CardPlayed { EnergySpent: >= 3 } c ? Mine(c.PlayerId) : None, n => $"{n} cards of 3+ energy in one fight"),
         ["CardCost"] = Threshold([nameof(CardPlayed)],
             (e, _) => e is CardPlayed c ? One(c.PlayerId, c.EnergySpent) : null, n => $"played a {n}-energy card"),
         ["GoldHeld"] = new([nameof(GoldGained), nameof(ItemPurchased)], (p, pooled) => new GoldHeldDetector(N(p), pooled), Lasting: true, Pools: true),

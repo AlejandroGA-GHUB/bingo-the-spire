@@ -126,6 +126,30 @@ public class BoardBuilderTests
         }
     }
 
+    [Theory]
+    [InlineData(2, 6)]  // the hand-tuned 2-player value
+    [InlineData(3, 8)]  // each further player adds the same step again
+    public void TeamValues_CanBeSetByHand(int players, int expected)
+    {
+        // Every square is the same pooled goal (potions over a fight), solo 4, set to 6 for a team of 2.
+        var goals = new GoalList(1, Enumerable.Range(0, 30).Select(i => new GoalDefinition(
+            $"potions_{i}", "Use {n} potions", "PotionsInCombat",
+            [new GoalTier(i % 4 + 1, new Dictionary<string, int> { ["n"] = 4 }, Team: new Dictionary<string, int> { ["n"] = 6 })])).ToList());
+        var characters = Enumerable.Repeat("IRONCLAD", players).ToArray();
+
+        var team = BoardBuilder.Build(goals, Request(mode: BingoMode.Team, characters: characters));
+        Assert.All(team.Squares, s => Assert.Equal(expected, s.Params["n"]));
+        var versus = BoardBuilder.Build(goals, Request(mode: BingoMode.Versus, characters: characters));
+        Assert.All(versus.Squares, s => Assert.Equal(4, s.Params["n"]));
+    }
+
+    [Fact]
+    public void BuiltInList_ReadsHandTunedTeamValues()
+    {
+        var potions = BuiltInGoals.List.Goals.Single(g => g.Id == "potions_in_combat");
+        Assert.Equal(6, potions.Tiers.Single(t => t.Difficulty == 4).Team!["n"]);
+    }
+
     [Fact]
     public void Exclusions_AreRespectedBoardWide()
     {

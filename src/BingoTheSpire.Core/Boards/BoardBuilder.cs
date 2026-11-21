@@ -110,7 +110,7 @@ public static class BoardBuilder
         var squares = placed.Select((p, index) =>
         {
             var (goal, tier) = p!.Value;
-            var parameters = ForTeam(goal, tier.Params ?? new Dictionary<string, int>(), request);
+            var parameters = ForTeam(goal, tier, request);
             return new BoardSquare(index, goal.Id, tier.Difficulty, parameters, GoalText.Render(goal.Text, parameters));
         }).ToList();
 
@@ -121,14 +121,19 @@ public static class BoardBuilder
     /// In Team mode, goals that add up every player's share get a bigger target: each player after
     /// the first adds 75% of the solo number, rounded to a clean value (spec section 4.3).
     /// </summary>
-    private static IReadOnlyDictionary<string, int> ForTeam(GoalDefinition goal, IReadOnlyDictionary<string, int> parameters, BoardRequest request)
+    private static IReadOnlyDictionary<string, int> ForTeam(GoalDefinition goal, GoalTier tier, BoardRequest request)
     {
+        var parameters = tier.Params ?? new Dictionary<string, int>();
         var players = request.CharacterIds.Count;
         if (request.Mode != BingoMode.Team || players < 2 || !DetectorCatalog.Pools(goal.Detector) || !parameters.TryGetValue("n", out var n))
         {
             return parameters;
         }
-        return new Dictionary<string, int>(parameters) { ["n"] = TeamTarget(n, players) };
+        // A hand-tuned 2-player value wins; each further player adds the same step again.
+        var team = tier.Team != null && tier.Team.TryGetValue("n", out var two)
+            ? n + (two - n) * (players - 1)
+            : TeamTarget(n, players);
+        return new Dictionary<string, int>(parameters) { ["n"] = team };
     }
 
     /// <summary>A solo target scaled for a team: 5 → 9, 10 → 18, 20 → 35, 400 → 700 for two players.</summary>
