@@ -3,7 +3,7 @@
 // retuning goals, tiers or tags). Never reuse an id for a different goal.
 // Difficulty: 1 = happens in most runs, 3 = needs some planning, 5 = rare.
 {
-  "version": 4,
+  "version": 5,
   "goals": [
     // ---- Cards ----------------------------------------------------------------------------
     { "id": "cards_in_turn", "text": "Play {n}+ cards in a single turn", "detector": "CardsPlayedInTurn", "tags": ["cards-per-turn"],
@@ -36,10 +36,13 @@
       "tiers": [ { "difficulty": 1, "params": { "n": 15 } }, { "difficulty": 2, "params": { "n": 30 } }, { "difficulty": 3, "params": { "n": 50 } } ] },
     { "id": "exact_kills", "text": "Land {n} killing blows with exactly 0 overkill", "detector": "ExactKills", "tags": ["overkill"],
       "tiers": [ { "difficulty": 2, "params": { "n": 2 } }, { "difficulty": 3, "params": { "n": 4 } }, { "difficulty": 4, "params": { "n": 6 } } ] },
-    { "id": "kills_in_turn", "text": "Kill {n}+ enemies in a single turn", "detector": "KillsInTurn", "tags": ["kills"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 2 } }, { "difficulty": 3, "params": { "n": 3 } }, { "difficulty": 4, "params": { "n": 4 } } ] },
-    { "id": "card_hits", "text": "Hit {n}+ enemies with a single card", "detector": "CardHits", "tags": ["aoe"],
-      "tiers": [ { "difficulty": 2, "params": { "n": 3 } }, { "difficulty": 3, "params": { "n": 4 } }, { "difficulty": 4, "params": { "n": 5 } } ] },
+    { "id": "first_turn_kills", "text": "Kill an enemy on turn 1 of a fight, {n} times", "detector": "FirstTurnKills", "tags": ["kills"],
+      "tiers": [ { "difficulty": 2, "params": { "n": 2 } }, { "difficulty": 3, "params": { "n": 3 } }, { "difficulty": 4, "params": { "n": 5 } } ] },
+    { "id": "card_hits", "text": "Hit {n}+ different enemies with a single card", "detector": "CardHits", "tags": ["aoe"],
+      // Easy: any area attack in a 3- or 4-enemy fight. Fights start with at most 4 enemies.
+      "tiers": [ { "difficulty": 1, "params": { "n": 4 } } ] },
+    { "id": "card_kills", "text": "Kill {n}+ enemies with a single card", "detector": "CardKills", "tags": ["aoe", "kills"],
+      "tiers": [ { "difficulty": 4, "params": { "n": 2 } }, { "difficulty": 5, "params": { "n": 3 } } ] },
 
     // ---- Block, HP and fights -------------------------------------------------------------
     { "id": "block_in_turn", "text": "Gain {n}+ Block in a single turn", "detector": "BlockInTurn", "tags": ["block"],

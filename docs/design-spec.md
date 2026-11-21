@@ -225,7 +225,7 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 
 ### 6.5 First goal list (v1)
 The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (version 1, 45 goals):
-- **39 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy and expensive cards; exhaust, shuffles and created cards; damage per turn, single hits, overkill, exact-lethal kills, kills per turn and hits from one card; Block per turn; flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
+- **40 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy and expensive cards; exhaust, shuffles and created cards; damage per turn, single hits, overkill, exact-lethal kills, kills on the first turn of a fight (counted over the run) hits and kills from one card; Block per turn; flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
 - **6 character goals:** Ironclad Strength, Silent Poison, Defect orbs, Necrobinder pet damage and Regent stars.
 - **Still to add,** because they need more events from the game: deck and run state (fully upgraded deck, unique cards, number of relics) and time (act cleared within a time limit). The [v0 draft §6](archive/sts2_bingo_v0_2026-11-20.md) has more ideas.
 

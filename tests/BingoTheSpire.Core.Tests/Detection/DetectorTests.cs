@@ -163,6 +163,30 @@ public class DetectorTests
     }
 
     [Fact]
+    public void FirstTurnKills_CountOnlyTurnOneKills_AcrossTheRun()
+    {
+        var s = new Script("FirstTurnKills", 3).Fight();
+        s.Hit(Alex, 1, 10, died: true);              // turn 1: counts
+        s.NextRound().Hit(Alex, 2, 10, died: true);  // turn 2: doesn't
+        s.Win();
+        Assert.Equal(1, s.Progress[Alex]);
+
+        // Progress lasts between fights.
+        s.Fight().Hit(Alex, 3, 10, died: true).Hit(Alex, 4, 10, died: true);
+        Assert.Equal(Alex, Assert.Single(s.Completions).PlayerId);
+    }
+
+    [Fact]
+    public void CardKills_CountOnlyEnemiesTheCardKilled()
+    {
+        var s = new Script("CardKills", 2).Fight();
+        s.Hit(Alex, 1, 10, died: true).Hit(Alex, 2, 10).Play(Alex);
+        Assert.Empty(s.Completions);
+        s.Hit(Alex, 2, 10, died: true).Hit(Alex, 3, 10, died: true).Play(Alex);
+        Assert.Equal(Alex, Assert.Single(s.Completions).PlayerId);
+    }
+
+    [Fact]
     public void ExactKills_IgnoreHitsThatDontKill()
     {
         var s = new Script("ExactKills", 1).Fight();

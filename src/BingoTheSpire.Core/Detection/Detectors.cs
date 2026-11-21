@@ -235,10 +235,11 @@ public sealed class LowHpWinDetector(int maxHp) : IDetector
 }
 
 /// <summary>
-/// "Hit {n} different enemies with a single card". A card's damage arrives before the card's own
-/// play event, so targets are gathered until that player's next <see cref="CardPlayed"/>.
+/// "Hit {n} different enemies with a single card", or with <paramref name="killsOnly"/> "Kill {n}
+/// enemies with a single card". A card's damage arrives before the card's own play event, so
+/// targets are gathered until that player's next <see cref="CardPlayed"/>.
 /// </summary>
-public sealed class CardHitsDetector(int target) : IDetector
+public sealed class CardHitsDetector(int target, bool killsOnly = false) : IDetector
 {
     private readonly Dictionary<ulong, HashSet<uint>> _targets = new();
 
@@ -246,7 +247,8 @@ public sealed class CardHitsDetector(int target) : IDetector
     {
         switch (evt)
         {
-            case DamageDealt { DealerPlayerId: { } player, DealerKind: CreatureKind.Player, TargetKind: CreatureKind.Enemy, TargetCombatId: { } enemy, CardId: not null }:
+            case DamageDealt { DealerPlayerId: { } player, DealerKind: CreatureKind.Player, TargetKind: CreatureKind.Enemy, TargetCombatId: { } enemy, CardId: not null } damage
+                when !killsOnly || damage.TargetDied:
                 if (!_targets.TryGetValue(player, out var set))
                 {
                     _targets[player] = set = [];
@@ -259,7 +261,7 @@ public sealed class CardHitsDetector(int target) : IDetector
                     sink.Progress(played.PlayerId, Math.Min(hit.Count, target), target);
                     if (hit.Count >= target)
                     {
-                        sink.Complete(played.PlayerId, $"{DisplayNames.Of(played.CardName, played.CardId, "a card")} hit {hit.Count} enemies");
+                        sink.Complete(played.PlayerId, $"{DisplayNames.Of(played.CardName, played.CardId, "a card")} {(killsOnly ? "killed" : "hit")} {hit.Count} enemies");
                     }
                 }
                 break;
