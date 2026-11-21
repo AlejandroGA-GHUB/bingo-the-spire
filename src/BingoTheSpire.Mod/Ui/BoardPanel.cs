@@ -295,8 +295,10 @@ internal sealed class BoardPanel
             var start = first.Position + first.Size / 2;
             var end = last.Position + last.Size / 2;
             var direction = (end - start).Normalized();
-            // Reach most of the way across the end notes, whichever way the line runs.
-            var reach = 0.42f * (Math.Abs(direction.X) * first.Size.X + Math.Abs(direction.Y) * first.Size.Y) + 6;
+            // Reach to just inside the end notes' edges, whichever way the line runs (rows, columns, diagonals).
+            var toEdgeX = Math.Abs(direction.X) > 0.001f ? first.Size.X / 2 / Math.Abs(direction.X) : float.MaxValue;
+            var toEdgeY = Math.Abs(direction.Y) > 0.001f ? first.Size.Y / 2 / Math.Abs(direction.Y) : float.MaxValue;
+            var reach = Math.Min(toEdgeX, toEdgeY) - 10;
             start -= direction * reach;
             end += direction * reach;
             var across = new Vector2(-direction.Y, direction.X);
