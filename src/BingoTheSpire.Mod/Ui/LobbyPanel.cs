@@ -47,8 +47,14 @@ internal sealed class LobbyPanel
     private readonly NetRole _role;
     private readonly BingoIcon _icon;
     private readonly BookFrame _book;
+    private const float SwitchWidth = 88;
+    private const float SwitchHeight = 40;
     private readonly Button _on;
     private readonly Button _off;
+    private readonly Panel _pill;
+    private readonly StyleBoxFlat _pillStyle;
+    private bool? _pillOn;
+    private Tween? _pillTween;
     private readonly LineEdit _seed;
     private readonly Label _seedHint;
     private readonly Label _modeName;
@@ -82,15 +88,28 @@ internal sealed class LobbyPanel
         var left = Column();
         spread.AddChild(left);
         left.AddChild(Heading("Bingo this run"));
-        var onOff = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        onOff.AddThemeConstantOverride("separation", 12);
-        left.AddChild(onOff);
-        _on = OnOffButton("ON", editable);
-        _off = OnOffButton("OFF", editable);
-        _on.Pressed += () => Pick(enabled: true);
-        _off.Pressed += () => Pick(enabled: false);
-        onOff.AddChild(_on);
-        onOff.AddChild(_off);
+        // ON / OFF: one frame around both words, with a colored pill that slides behind the picked one.
+        var frameStyle = BingoStyle.Box(new Color(0, 0, 0, 0.03f), 10, 3, BingoStyle.Unpicked, 0);
+        frameStyle.ContentMarginLeft = frameStyle.ContentMarginRight = frameStyle.ContentMarginTop = frameStyle.ContentMarginBottom = 3;
+        frameStyle.AntiAliasing = true;
+        var frame = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin };
+        frame.AddThemeStyleboxOverride("panel", frameStyle);
+        left.AddChild(frame);
+        var track = new Control { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(SwitchWidth * 2, SwitchHeight), ClipContents = true };
+        frame.AddChild(track);
+        _pillStyle = BingoStyle.Box(BingoStyle.On, 7, 0, Colors.Transparent, 0);
+        _pillStyle.AntiAliasing = true;
+        _pillStyle.BorderWidthBottom = 3;
+        _pillStyle.BorderColor = BingoStyle.On.Darkened(0.35f);
+        _pill = new Panel { MouseFilter = Control.MouseFilterEnum.Ignore, Size = new Vector2(SwitchWidth, SwitchHeight) };
+        _pill.AddThemeStyleboxOverride("panel", _pillStyle);
+        track.AddChild(_pill);
+        _on = SwitchButton("ON", 0, editable);
+        _off = SwitchButton("OFF", SwitchWidth, editable);
+        _on.Pressed += () => Flip(true);
+        _off.Pressed += () => Flip(false);
+        track.AddChild(_on);
+        track.AddChild(_off);
         left.AddChild(Spacer(8));
         left.AddChild(Heading("Board difficulty"));
         var difficulties = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -244,8 +263,7 @@ internal sealed class LobbyPanel
     private void UpdateLabels()
     {
         var setup = _shown;
-        StyleOnOff(_on, setup.Enabled, BingoStyle.On, BingoStyle.On.Darkened(0.35f));
-        StyleOnOff(_off, !setup.Enabled, BingoStyle.Off, BingoStyle.Off.Darkened(0.35f));
+        SlidePill(setup.Enabled);
 
         var mode = Array.Find(Modes, m => m.Mode == setup.Mode);
         _modeName.Text = _role == NetRole.Solo ? "How it works" : mode.Name;
@@ -371,45 +389,74 @@ internal sealed class LobbyPanel
 
     private static Control Spacer(int height) => new() { CustomMinimumSize = new Vector2(0, height), MouseFilter = Control.MouseFilterEnum.Ignore };
 
-    private static Button OnOffButton(string text, bool editable)
+    private Button SwitchButton(string text, float x, bool editable)
     {
         var button = BingoFonts.Keep(new Button
         {
             Text = text,
-            CustomMinimumSize = new Vector2(96, 46),
+            Position = new Vector2(x, 0),
+            Size = new Vector2(SwitchWidth, SwitchHeight),
+            Disabled = !editable,
+            MouseDefaultCursorShape = editable ? Control.CursorShape.PointingHand : Control.CursorShape.Arrow,
         });
-        Gamepad.Focusable(button);
+        foreach (var state in new[] { "normal", "hover", "pressed", "disabled" })
+        {
+            button.AddThemeStyleboxOverride(state, BingoStyle.Empty());
+        }
         button.AddThemeFontOverride("font", BingoFonts.Heading);
         button.AddThemeFontSizeOverride("font_size", 19);
-        return button;
+        // The switch plays the game's tickbox sounds itself, only when it actually flips.
+        return Gamepad.Focusable(button, click: null);
     }
 
-    /// <summary>Picked: filled with its color. Not picked: greyed outline.</summary>
-    private static void StyleOnOff(Button button, bool picked, Color color, Color shade)
+    private void Flip(bool on)
     {
-        StyleBoxFlat Box(Color fill, Color border, bool hover)
+        if (_role == NetRole.Client || _shown.Enabled == on)
         {
-            var box = BingoStyle.Box(hover ? fill.Lightened(0.08f) : fill, 9, 3, border, 0);
-            box.AntiAliasing = true;
-            if (picked)
+            return;
+        }
+        Sfx.Play(on ? Sfx.TickOn : Sfx.TickOff);
+        Pick(enabled: on);
+    }
+
+    /// <summary>Slides the pill under ON or OFF and colors it; jumps straight there the first time.</summary>
+    private void SlidePill(bool on)
+    {
+        var fill = on ? BingoStyle.On : BingoStyle.Off;
+        var x = on ? 0 : SwitchWidth;
+        foreach (var (button, picked) in new[] { (_on, on), (_off, !on) })
+        {
+            var text = picked ? Colors.White : BingoStyle.Unpicked.Darkened(0.1f);
+            foreach (var state in new[] { "font_color", "font_pressed_color", "font_focus_color", "font_disabled_color" })
             {
-                box.ShadowColor = shade;
-                box.ShadowSize = 1;
-                box.ShadowOffset = new Vector2(0, 3);
+                button.AddThemeColorOverride(state, text);
             }
-            return box;
+            button.AddThemeColorOverride("font_hover_color", picked ? Colors.White : BingoStyle.PageInkSoft);
         }
-        var fill = picked ? color : new Color(0, 0, 0, 0.03f);
-        var border = picked ? color : BingoStyle.Unpicked;
-        button.AddThemeStyleboxOverride("normal", Box(fill, border, false));
-        button.AddThemeStyleboxOverride("hover", Box(fill, border, true));
-        button.AddThemeStyleboxOverride("pressed", Box(fill, border, false));
-        button.AddThemeStyleboxOverride("disabled", Box(fill, border, false));
-        var text = picked ? Colors.White : BingoStyle.Unpicked.Darkened(0.1f);
-        foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_disabled_color" })
+        if (_pillOn == on)
         {
-            button.AddThemeColorOverride(state, text);
+            return;
         }
+        var first = _pillOn == null;
+        _pillOn = on;
+        _pillTween?.Kill();
+        if (first || !_pill.IsInsideTree())
+        {
+            _pill.Position = new Vector2(x, 0);
+            _pillStyle.BgColor = fill;
+            _pillStyle.BorderColor = fill.Darkened(0.35f);
+            return;
+        }
+        // Eases in to its stop without overshooting, so it never leaves the frame.
+        var from = _pillStyle.BgColor;
+        _pillTween = _pill.CreateTween();
+        _pillTween.TweenProperty(_pill, "position:x", x, 0.3).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        _pillTween.Parallel().TweenMethod(Callable.From<float>(t =>
+        {
+            _pillStyle.BgColor = from.Lerp(fill, t);
+            _pillStyle.BorderColor = _pillStyle.BgColor.Darkened(0.35f);
+            _pill.QueueRedraw();
+        }), 0f, 1f, 0.25);
     }
 
     private static LineEdit SeedBox(bool editable)

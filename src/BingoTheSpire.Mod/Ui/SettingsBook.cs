@@ -53,9 +53,11 @@ internal static class SettingsBook
             : "Every controller button is taken by the game: open the board from the bingo button in the top bar. In the bingo books, move with the stick or d-pad, Accept picks, Back closes.", 16, BingoStyle.PageInk));
 
         var listening = false;
+        keyButton.MouseEntered += () => Sfx.Play(Sfx.Hover);
         keyButton.Pressed += () =>
         {
             listening = true;
+            Sfx.Play(Sfx.Click);
             keyButton.Text = "Press a key…";
             keyNote.Text = "Esc to cancel.";
             keyButton.GrabFocus();

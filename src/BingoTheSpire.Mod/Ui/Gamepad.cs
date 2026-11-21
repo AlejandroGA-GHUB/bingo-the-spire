@@ -160,19 +160,34 @@ internal static class Gamepad
         return box;
     }
 
-    /// <summary>Lets a button be reached with the controller, with a gold ring when focused.</summary>
-    public static T Focusable<T>(T button) where T : BaseButton
+    private static readonly StyleBoxEmpty NoRing = new();
+
+    /// <summary>
+    /// Lets a button be reached with the controller, with a gold ring when focused, and gives it the
+    /// game's hover and click sounds (<paramref name="click"/> null for buttons that play their own).
+    /// </summary>
+    public static T Focusable<T>(T button, string? click = Sfx.Click) where T : BaseButton
     {
         button.FocusMode = Control.FocusModeEnum.All;
         button.AddThemeStyleboxOverride("focus", FocusRing);
-        // A mouse click shouldn't leave a ring behind: focus only stays while using a controller.
+        // A mouse click shouldn't leave a ring behind, so the ring only shows while using a controller.
+        // Never drop the focus here instead: a button that loses focus mid-click cancels the click.
         button.FocusEntered += () =>
         {
-            if (!InUse)
+            button.AddThemeStyleboxOverride("focus", InUse ? FocusRing : NoRing);
+            if (InUse)
             {
-                button.CallDeferred(Control.MethodName.ReleaseFocus);
+                Sfx.Play(Sfx.Hover);
             }
         };
+        button.MouseEntered += () =>
+        {
+            if (!button.Disabled)
+            {
+                Sfx.Play(Sfx.Hover);
+            }
+        };
+        button.Pressed += () => Sfx.Play(click);
         return button;
     }
 
@@ -193,7 +208,9 @@ internal static class Gamepad
             }
             ring ??= MakeRing(control);
             ring.Visible = true;
+            Sfx.Play(Sfx.Hover);
         };
+        control.MouseEntered += () => Sfx.Play(Sfx.Hover);
         control.FocusExited += () =>
         {
             if (ring != null && GodotObject.IsInstanceValid(ring))
@@ -206,7 +223,12 @@ internal static class Gamepad
             if (AcceptActions.Any(a => InputMap.HasAction(a) && input.IsActionPressed(a)) && input is not InputEventMouse)
             {
                 control.AcceptEvent();
+                Sfx.Play(Sfx.Click);
                 accept();
+            }
+            else if (input is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+            {
+                Sfx.Play(Sfx.Click);
             }
         };
     }

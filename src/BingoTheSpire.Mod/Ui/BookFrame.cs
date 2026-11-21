@@ -70,7 +70,12 @@ internal sealed class BookFrame
             _close.AddThemeColorOverride(state, BingoStyle.NameplateText);
         }
         _close.AddThemeStyleboxOverride("focus", Gamepad.FocusRing);
-        _close.Pressed += Hide;
+        _close.Pressed += () =>
+        {
+            Sfx.Play(Sfx.Back);
+            Hide();
+        };
+        _close.MouseEntered += () => Sfx.Play(Sfx.Hover);
         Book.AddChild(_close);
 
         Root.Resized += QueueLayout;

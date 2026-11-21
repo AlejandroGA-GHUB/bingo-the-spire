@@ -384,7 +384,12 @@ internal sealed class BoardPanel
         heading.AddThemeConstantOverride("shadow_offset_y", 4);
         heading.AddThemeConstantOverride("shadow_outline_size", 9);
         heading.VerticalAlignment = VerticalAlignment.Center;
-        row.AddChild(heading);
+        // Lifted a little, so the drop shadow has room above the plate's bottom edge.
+        var lift = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        lift.AddThemeConstantOverride("margin_top", -7);
+        lift.AddThemeConstantOverride("margin_bottom", 11);
+        lift.AddChild(heading);
+        row.AddChild(lift);
         if (info != null)
         {
             info.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
