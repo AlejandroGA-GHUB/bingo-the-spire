@@ -21,6 +21,10 @@ internal sealed class BoardPanel
     private Label? _stats;
     private Label? _code;
     private GridContainer? _grid;
+    private Control? _strikes;
+    private readonly Dictionary<int, float> _struck = new(); // line → how much of its stroke is drawn (0-1)
+    private readonly HashSet<int> _striking = [];
+    private bool _firstUpdate;
     private Label? _footer;
     private string _footerText = "";
     private int _size;
@@ -60,6 +64,11 @@ internal sealed class BoardPanel
             return;
         }
         _book.Show();
+        // Lines made while the board was closed get struck through once the book has opened.
+        foreach (var line in _struck.Where(kv => kv.Value < 1).Select(kv => kv.Key).ToList())
+        {
+            Strike(line, delay: 0.3);
+        }
         // Squares filled while the board was closed get their moment now.
         foreach (var index in _fresh.Where(i => i < _cells.Count))
         {
@@ -82,6 +91,9 @@ internal sealed class BoardPanel
         }
         _cells.Clear();
         _fresh.Clear();
+        _struck.Clear();
+        _striking.Clear();
+        _firstUpdate = true;
         _size = board.Size;
 
         var noteSize = board.Size >= 5 ? new Vector2(196, 104) : new Vector2(240, 124);
@@ -102,7 +114,13 @@ internal sealed class BoardPanel
         _grid = new GridContainer { Columns = board.Size, MouseFilter = Control.MouseFilterEnum.Ignore };
         _grid.AddThemeConstantOverride("h_separation", Gap);
         _grid.AddThemeConstantOverride("v_separation", 14);
-        content.AddChild(_grid);
+        // The grid shares its space with a layer on top for the strokes through finished lines.
+        var gridLayers = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        content.AddChild(gridLayers);
+        gridLayers.AddChild(_grid);
+        _strikes = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
+        _strikes.Draw += DrawStrikes;
+        gridLayers.AddChild(_strikes);
         foreach (var square in board.Squares)
         {
             var column = square.Index % board.Size;
@@ -122,9 +140,22 @@ internal sealed class BoardPanel
     }
 
     /// <param name="others">Lockout only: squares another player took, with their name.</param>
-    public void Update(IReadOnlySet<int> filled, IReadOnlySet<int> inLines, int lines, int total,
+    /// <param name="lines">Finished lines (indices into <see cref="BoardRules.Lines"/>).</param>
+    public void Update(IReadOnlySet<int> filled, IReadOnlySet<int> inLines, IReadOnlyList<int> lines, int total,
         IReadOnlyDictionary<int, string>? others = null)
     {
+        foreach (var line in lines.Where(l => !_struck.ContainsKey(l)))
+        {
+            // Lines already there when the board is built (e.g. after Continue) are drawn straight away.
+            _struck[line] = _firstUpdate ? 1 : 0;
+            if (!_firstUpdate && Visible)
+            {
+                Strike(line, delay: 0.15);
+            }
+        }
+        _firstUpdate = false;
+        _strikes?.QueueRedraw();
+
         foreach (var cell in _cells)
         {
             var index = cell.Square.Index;
@@ -132,12 +163,67 @@ internal sealed class BoardPanel
         }
         if (_stats != null)
         {
-            _stats.Text = $"{filled.Count} / {total} squares" + (lines switch
+            _stats.Text = $"{filled.Count} / {total} squares" + (lines.Count switch
             {
                 0 => "",
                 1 => "  ·  1 line!",
                 _ => $"  ·  {lines} lines!",
             });
+        }
+    }
+
+    /// <summary>Draws the marker stroke through a finished line, left to right.</summary>
+    private void Strike(int line, double delay)
+    {
+        if (_strikes == null || !_striking.Add(line))
+        {
+            return;
+        }
+        var strikes = _strikes;
+        var tween = strikes.CreateTween();
+        tween.TweenInterval(delay);
+        tween.TweenMethod(Callable.From<float>(t =>
+        {
+            _struck[line] = t;
+            strikes.QueueRedraw();
+        }), 0f, 1f, 0.55).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        tween.TweenCallback(Callable.From(() => _striking.Remove(line)));
+    }
+
+    private static readonly Color StrikeInk = BingoStyle.RedInk with { A = 0.7f };
+
+    /// <summary>A slightly wobbly marker line through the middle of every note in each finished line.</summary>
+    private void DrawStrikes()
+    {
+        if (_strikes == null || _cells.Count == 0)
+        {
+            return;
+        }
+        foreach (var (line, drawn) in _struck)
+        {
+            if (drawn <= 0)
+            {
+                continue;
+            }
+            var cells = BoardRules.Lines(_size)[line];
+            Vector2 Center(int index) => _cells[index].Note.Slot.Position + _cells[index].Note.Slot.Size / 2;
+            var start = Center(cells[0]);
+            var end = Center(cells[^1]);
+            var direction = (end - start).Normalized();
+            start -= direction * 70;
+            end += direction * 70;
+            var across = new Vector2(-direction.Y, direction.X);
+
+            const int steps = 48;
+            var count = Math.Max(2, (int)Math.Ceiling(steps * drawn) + 1);
+            var points = new Vector2[count];
+            for (var i = 0; i < count; i++)
+            {
+                var t = Math.Min(drawn, (float)i / steps);
+                var wobble = MathF.Sin(t * 9f + line * 1.7f) * 1.8f;
+                points[i] = start + (end - start) * t + across * wobble;
+            }
+            _strikes.DrawPolyline(points, StrikeInk, 9, antialiased: true);
         }
     }
 

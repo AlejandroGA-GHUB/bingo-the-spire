@@ -195,7 +195,7 @@ internal sealed class BingoOverlay
                 others[square] = Name(owner);
             }
         }
-        _board.Update(filled, inLines, lines.Count, _session.Board.Squares.Count, others);
+        _board.Update(filled, inLines, lines, _session.Board.Squares.Count, others);
         _icon.Draw(size, filled, inLines);
     }
 
@@ -248,7 +248,7 @@ internal sealed class BingoOverlay
             return;
         }
         Refresh();
-        _toasts.Bingo(line.Ordinal, BoardRules.LineName(_session.Board.Size, line.Line) + Where(line.At).Replace('\n', ' '));
+        _toasts.Bingo();
     });
 
     /// <summary>Lockout race: this player completed a goal, but someone else's claim reached the host first.</summary>

@@ -70,7 +70,7 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 
 ### 4.2 Solo
 - One board. Squares fill as you complete goals: a toast appears and the square pulses.
-- **Win: the first line** (row, column or diagonal) gets the "BINGO!" banner. After that, the board stays active: **the 2nd, 3rd and later lines are tracked**, with the floor and run time for each.
+- **Win: the first line** (row, column or diagonal) gets a small "BINGO!" that pops in at the top of the screen and floats away; every later line gets the same. The board marks the line itself with a marker stroke drawn through its notes (animated the next time the board is open, if it was closed). After that, the board stays active: **the 2nd, 3rd and later lines are tracked**, with the floor and run time for each.
 - When the run ends (win or death), the bingo results are recorded. Winning the run and winning the bingo are separate results.
 
 ### 4.3 Co-op: three modes, chosen by the host
