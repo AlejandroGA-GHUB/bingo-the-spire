@@ -26,6 +26,12 @@
     <EmbeddedResource Include="$(RepoRoot)src\BingoTheSpire.Core\Goals\goals.json" LogicalName="BingoTheSpire.goals.json" />
   </ItemGroup>
 
+  <!-- Fonts (SIL OFL) are embedded in the DLL; their licenses ship next to it. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Fonts\*.ttf" LogicalName="BingoTheSpire.Fonts.%(Filename)%(Extension)" />
+    <None Include="Assets\Fonts\OFL-*.txt" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <!-- Game assemblies: compile-time only, never copied (the game provides them at runtime). -->
   <ItemGroup>
     <Reference Include="sts2"><HintPath>$(Sts2RefDir)\sts2.dll</HintPath><Private>false</Private></Reference>
@@ -44,7 +50,7 @@
 
   <Target Name="DeployModToGame" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true'">
     <MakeDir Directories="$(ModDeployDir)" />
-    <Copy SourceFiles="$(TargetDir)$(AssemblyName).dll;$(TargetDir)$(AssemblyName).pdb;$(TargetDir)$(ModId).json"
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).dll;$(TargetDir)$(AssemblyName).pdb;$(TargetDir)$(ModId).json;$(TargetDir)OFL-MochiyPopOne.txt;$(TargetDir)OFL-Mali.txt"
           DestinationFolder="$(ModDeployDir)" SkipUnchangedFiles="true" />
     <Message Importance="high" Text="BingoTheSpire deployed to $(ModDeployDir)" />
   </Target>

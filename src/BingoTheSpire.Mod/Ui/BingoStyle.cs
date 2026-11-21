@@ -18,7 +18,23 @@ internal static class BingoStyle
     // Icon (parchment card, like the game's top bar art)
     public static readonly Color Parchment = new(0.91f, 0.85f, 0.73f);
     public static readonly Color ParchmentDark = new(0.74f, 0.66f, 0.52f);
-    public static readonly Color Ink = new(0.22f, 0.17f, 0.13f);
+    public static readonly Color IconInk = new(0.22f, 0.17f, 0.13f);
+
+    // The book look: paper, ink and brass.
+    public static readonly Color Paper = Color.FromHtml("#fffcf1");
+    public static readonly Color PaperTaken = Color.FromHtml("#e9e3d5");
+    public static readonly Color PageInk = Color.FromHtml("#2a221b");
+    public static readonly Color PageInkSoft = Color.FromHtml("#6b5d4c");
+    public static readonly Color RedInk = Color.FromHtml("#c8352b");
+    public static readonly Color TakenInk = Color.FromHtml("#b03a48");
+    public static readonly Color Brass = Color.FromHtml("#d9a441");
+    public static readonly Color BrassDark = Color.FromHtml("#7a531b");
+    public static readonly Color NameplateText = Color.FromHtml("#3b2508");
+    public static readonly Color Cream = Color.FromHtml("#fff8e3");
+    public static readonly Color Tape = new(0.95f, 0.91f, 0.79f, 0.72f);
+    public static readonly Color On = Color.FromHtml("#2f8f5b");
+    public static readonly Color Off = Color.FromHtml("#b23a3a");
+    public static readonly Color Unpicked = Color.FromHtml("#b9ad97");
 
     /// <summary>One color per difficulty 1-5: teal, blue, purple, orange, red.</summary>
     public static Color Difficulty(int difficulty) => difficulty switch
@@ -45,15 +61,34 @@ internal static class BingoStyle
         return box;
     }
 
-    /// <summary>A label with the game's chunky outlined look.</summary>
-    public static Label Text(string text, int size, Color? color = null, int outline = 6)
+    /// <summary>A label with the game's chunky outlined look (for text over the game, like toasts).</summary>
+    public static Label Text(string text, int size, Color? color = null, int outline = 6, Font? font = null)
     {
         var label = new Label { Text = text };
+        label.AddThemeFontOverride("font", font ?? BingoFonts.NoteBold);
         label.AddThemeFontSizeOverride("font_size", size);
         label.AddThemeColorOverride("font_color", color ?? Colors.White);
         label.AddThemeColorOverride("font_outline_color", Outline);
         label.AddThemeConstantOverride("outline_size", outline);
         return label;
+    }
+
+    /// <summary>Ink on paper: no outline.</summary>
+    public static Label Ink(string text, Font font, int size, Color color)
+    {
+        var label = new Label { Text = text, MouseFilter = Control.MouseFilterEnum.Ignore };
+        label.AddThemeFontOverride("font", font);
+        label.AddThemeFontSizeOverride("font_size", size);
+        label.AddThemeColorOverride("font_color", color);
+        return label;
+    }
+
+    /// <summary>A flat box with no fill, e.g. to remove a control's default look.</summary>
+    public static StyleBoxEmpty Empty(int padding = 0)
+    {
+        var box = new StyleBoxEmpty();
+        box.SetContentMarginAll(padding);
+        return box;
     }
 
     /// <summary>Scales a control around its center, now and whenever it's resized.</summary>

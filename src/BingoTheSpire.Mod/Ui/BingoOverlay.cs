@@ -137,7 +137,7 @@ internal sealed class BingoOverlay
             var by = session.State.OwnerOf(square) ?? local;
             if (session.State.ClaimOf(square, by) is { } c)
             {
-                _board.SetEvidence(square, $"{c.Evidence}{Where(c.At)}");
+                _board.SetEvidence(square, Evidence(c));
             }
         }
         foreach (var progress in session.Tracker.ProgressOf(local))
@@ -183,8 +183,9 @@ internal sealed class BingoOverlay
         var filled = _session.State.FilledFor(_localPlayer);
         var lines = _session.State.LinesFor(_localPlayer);
         var inLines = lines.SelectMany(line => BoardRules.Lines(size)[line]).ToHashSet();
+        // Only Lockout marks other players' squares; in Team every filled square is just DONE.
         var others = new Dictionary<int, string>();
-        for (var square = 0; square < _session.Board.Squares.Count; square++)
+        for (var square = 0; square < _session.Board.Squares.Count && _session.Board.Mode == BingoMode.Lockout; square++)
         {
             if (_session.State.OwnerOf(square) is { } owner && owner != _localPlayer)
             {
@@ -226,12 +227,12 @@ internal sealed class BingoOverlay
             case BingoMode.Versus when !mine:
                 return; // their own copy of the board
             case BingoMode.Lockout when !mine:
-                _board.SetEvidence(filled.Square, $"{c.Evidence}{Where(c.At)}");
+                _board.SetEvidence(filled.Square, Evidence(c));
                 Refresh();
                 _toasts.Notice($"🔒 {Name(filled.PlayerId).ToUpperInvariant()} TOOK A SQUARE", goal, Toasts.Rival);
                 return;
         }
-        _board.MarkFilled(filled.Square, $"{c.Evidence}{Where(c.At)}");
+        _board.MarkFilled(filled.Square, Evidence(c));
         Refresh();
         _icon.Pulse();
         _toasts.Square(goal, (mine ? "" : $"{Name(filled.PlayerId)}: ") + Capitalize(c.Evidence));
@@ -272,7 +273,7 @@ internal sealed class BingoOverlay
             var who = win.PlayerId == _localPlayer ? "YOU WIN" : $"{Name(win.PlayerId).ToUpperInvariant()} WINS";
             var how = win.Reason switch
             {
-                WinReason.Clinch => "Clinched: nobody else can still win",
+                WinReason.Clinch => "So far ahead that nobody can catch up",
                 WinReason.MostSquares => "Most squares when the run ended",
                 _ => "First line",
             };
@@ -314,6 +315,10 @@ internal sealed class BingoOverlay
             }
         }
     }).CallDeferred();
+
+    /// <summary>Hover details for a filled square: what happened and where, and who did it if it wasn't you.</summary>
+    private string Evidence(ClaimResolved claim) =>
+        (claim.PlayerId != _localPlayer ? $"{Name(claim.PlayerId)}: " : "") + Capitalize(claim.Evidence) + Where(claim.At);
 
     private static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 
