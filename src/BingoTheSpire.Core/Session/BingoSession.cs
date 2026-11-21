@@ -95,10 +95,28 @@ public sealed class BingoSession
         {
             return;
         }
-        var claim = new Claim(completion.Square, completion.GoalId, completion.PlayerId, completion.Evidence, completion.At);
+        Submit(new Claim(completion.Square, completion.GoalId, completion.PlayerId, completion.Evidence, completion.At));
+    }
+
+    /// <summary>
+    /// Claims a square for a player as if they had completed its goal, e.g. from the dev console.
+    /// Goes through the normal rules: decided here by the authority, or sent to the host.
+    /// </summary>
+    /// <returns>False if the square can't be claimed (already the player's, or taken).</returns>
+    public bool ClaimSquare(int square, ulong playerId, string evidence, RunPosition? at = null)
+    {
+        if (square < 0 || square >= Board.Squares.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(square));
+        }
+        return Submit(new Claim(square, Board.Squares[square].GoalId, playerId, evidence, at));
+    }
+
+    private bool Submit(Claim claim)
+    {
         if (!State.CouldAccept(claim))
         {
-            return; // already ours, or someone else's in Lockout and Team
+            return false; // already ours, or someone else's in Lockout and Team
         }
         if (IsAuthority)
         {
@@ -108,5 +126,6 @@ public sealed class BingoSession
         {
             Claimed?.Invoke(claim);
         }
+        return true;
     }
 }

@@ -238,6 +238,10 @@ internal sealed class BingoOverlay
         _board.MarkFilled(filled.Square, Evidence(c));
         Refresh();
         _icon.Pulse();
+        if (c.Evidence == DevTools.DevCommands.QuietEvidence)
+        {
+            return; // a whole row from the dev console: only the BINGO! should show
+        }
         _toasts.Square(goal, (mine ? "" : $"{Name(filled.PlayerId)}: ") + Capitalize(c.Evidence));
     });
 

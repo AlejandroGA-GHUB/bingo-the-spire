@@ -304,4 +304,22 @@ public class BingoSessionTests
         Give(state, Alex, 0, 1, 2, 3, 4);
         Assert.Equal(new BingoWin(Alex, WinReason.Line, null), state.Winner);
     }
+
+    [Fact]
+    public void ClaimSquare_FollowsTheNormalRules()
+    {
+        var s = Session(BingoMode.Lockout);
+        var lines = new List<LineCompleted>();
+        s.State.LineDone += lines.Add;
+        for (var column = 0; column < 4; column++)
+        {
+            Assert.True(s.ClaimSquare(column, Alex, "dev console"));
+        }
+        Assert.Equal(Alex, s.State.OwnerOf(2));
+        Assert.Single(lines);
+
+        Assert.False(s.ClaimSquare(2, Alex, "again"));
+        Assert.False(s.ClaimSquare(2, Sam, "taken"));
+    }
 }
+

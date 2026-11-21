@@ -343,6 +343,11 @@ The `id` must not change after release: the game uses it for its settings and co
 - **Save and continue:** quit in the middle of a goal in progress, continue, and check that the progress comes back.
 - **Compatibility:** smoke-test runs with a popular character mod (e.g. Chaos Zero Nightmare / Tiphera) and a mod that adds events. The board has to build, general goals have to fire, and nothing can crash.
 - **Manual:** a full solo run to a bingo on each branch, a co-op match in each mode, controller navigation.
+- **Dev console commands** for trying the UI, available only when the game's own debug commands are on. They fill squares through the normal claim rules, so they're saved like real completions:
+  - `bingo <row> [delay]` fills a whole row (1 = top) to show the BINGO! and the line stroke, without the square pop-ups.
+  - `fill <row> <col> [delay]` fills one square, with its pop-up.
+  - Both wait 1 second by default (or the delay given, in seconds) so the console can be closed first.
+  - `bingo reset` empties the board, in solo only. A Continue brings the squares back.
 
 ## 13. Risks
 
