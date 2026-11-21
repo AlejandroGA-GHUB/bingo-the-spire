@@ -16,6 +16,12 @@ internal sealed class BookFrame
     private float _scale = 1;
     private bool _layoutQueued;
 
+    // Books opened from another book (Settings or Past runs from the lobby) cover the one below:
+    // it's hidden until the new one closes, then comes back.
+    private static readonly List<BookFrame> OpenBooks = [];
+    private BookFrame? _under;
+    private bool _covered;
+
     /// <param name="backdrop">Dim the screen behind the book, and close when it's clicked.</param>
     public BookFrame(Control parent, string name, float contentWidth, bool backdrop, Action? onClosed = null)
     {
@@ -110,6 +116,19 @@ internal sealed class BookFrame
 
     public void Show()
     {
+        if (_backdrop != null && !OpenBooks.Contains(this))
+        {
+            OpenBooks.RemoveAll(b => !GodotObject.IsInstanceValid(b.Root));
+            _under = OpenBooks.LastOrDefault(b => b._backdrop != null && b.Root.Visible);
+            if (_under != null)
+            {
+                _under._covered = true;
+                _under.Root.Visible = false;
+            }
+            OpenBooks.Add(this);
+            // In front of everything else on the screen, the bingo icon included.
+            Root.GetParent()?.MoveChild(Root, -1);
+        }
         Root.Visible = true;
         Layout();
         Gamepad.Capture(Root, Hide);
@@ -124,11 +143,31 @@ internal sealed class BookFrame
 
     public void Hide()
     {
-        if (Root.Visible)
+        if (!Root.Visible && !_covered)
         {
-            Root.Visible = false;
-            Gamepad.Release(Root);
-            _onClosed();
+            return;
+        }
+        Root.Visible = false;
+        _covered = false;
+        OpenBooks.Remove(this);
+        Gamepad.Release(Root);
+        _onClosed();
+
+        // Bring back the book this one covered. Deferred, so the Back press that closed this book
+        // isn't seen by the one below in the same frame.
+        var under = _under;
+        _under = null;
+        if (under != null)
+        {
+            Callable.From(() =>
+            {
+                if (GodotObject.IsInstanceValid(under.Root) && under._covered)
+                {
+                    under._covered = false;
+                    under.Root.Visible = true;
+                    Gamepad.FocusFirst(under.Content, under._close);
+                }
+            }).CallDeferred();
         }
     }
 

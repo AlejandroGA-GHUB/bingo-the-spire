@@ -90,7 +90,8 @@ internal static class Gamepad
                 tree.ProcessFrame -= Poll;
                 return;
             }
-            if (CancelActions.Any(a => InputMap.HasAction(a) && Input.IsActionJustPressed(a)))
+            // Only the book on top reacts: one covered by another book is hidden.
+            if (owner is CanvasItem { Visible: true } && CancelActions.Any(a => InputMap.HasAction(a) && Input.IsActionJustPressed(a)))
             {
                 close();
             }
