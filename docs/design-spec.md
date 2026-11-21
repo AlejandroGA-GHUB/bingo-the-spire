@@ -187,6 +187,7 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 ```
 
 - The goal list is an embedded, **versioned** JSON file (`goalListVersion`).
+- `{s}` in a goal's text is a plural ending that follows `{n}`: "Remove {n} card{s} at shops" reads "Remove 1 card" or "Remove 2 cards".
 - `requires.events` is optional: the detector catalog already knows which game events each detector needs. A goal is left out if its detector, or any event listed here, is missing on this game version (section 9).
 - `requires.character` is optional. Character-specific goals are matched by the game's character ID.
 

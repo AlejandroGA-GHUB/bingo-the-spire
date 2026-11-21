@@ -150,6 +150,15 @@ public class BoardBuilderTests
         Assert.Equal(6, potions.Tiers.Single(t => t.Difficulty == 4).Team!["n"]);
     }
 
+    [Theory]
+    [InlineData(1, "Remove 1 card at shops")]
+    [InlineData(3, "Remove 3 cards at shops")]
+    public void GoalText_PluralFollowsN(int n, string expected)
+    {
+        Assert.Equal(expected, GoalText.Render("Remove {n} card{s} at shops", new Dictionary<string, int> { ["n"] = n }));
+        Assert.Equal(["n"], GoalText.Placeholders("Remove {n} card{s} at shops"));
+    }
+
     [Fact]
     public void Exclusions_AreRespectedBoardWide()
     {

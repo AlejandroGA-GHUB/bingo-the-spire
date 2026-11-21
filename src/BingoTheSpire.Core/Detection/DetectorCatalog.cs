@@ -63,7 +63,7 @@ public static class DetectorCatalog
             n => $"bought {n} relics"),
         ["CardsRemovedAtShop"] = Counter(Scope.Run, [nameof(ItemPurchased)],
             (e, _) => e is ItemPurchased i && i.ItemKind.Contains("Removal", StringComparison.Ordinal) ? Mine(i.PlayerId) : None,
-            n => $"removed {n} cards at shops"),
+            n => $"removed {n} card{(n == 1 ? "" : "s")} at shops"),
         ["PotionsUsed"] = Counter(Scope.Run, [nameof(PotionUsed)],
             (e, _) => e is PotionUsed p ? Mine(p.PlayerId) : None, n => $"used {n} potions"),
         // Everyone in the fight gets these already, so they never pool.
