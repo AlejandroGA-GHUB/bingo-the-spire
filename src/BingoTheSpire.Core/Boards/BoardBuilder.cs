@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using BingoTheSpire.Core.Detection;
 using BingoTheSpire.Core.Goals;
 using BingoTheSpire.Core.Hashing;
 using BingoTheSpire.Core.Randomness;
@@ -109,11 +110,42 @@ public static class BoardBuilder
         var squares = placed.Select((p, index) =>
         {
             var (goal, tier) = p!.Value;
-            var parameters = tier.Params ?? new Dictionary<string, int>();
+            var parameters = ForTeam(goal, tier.Params ?? new Dictionary<string, int>(), request);
             return new BoardSquare(index, goal.Id, tier.Difficulty, parameters, GoalText.Render(goal.Text, parameters));
         }).ToList();
 
         return new BingoBoard(size, seedText, goals.Version, request.Mode, request.Difficulty, boardSeed, squares);
+    }
+
+    /// <summary>
+    /// In Team mode, goals that add up every player's share get a bigger target: each player after
+    /// the first adds 75% of the solo number, rounded to a clean value (spec section 4.3).
+    /// </summary>
+    private static IReadOnlyDictionary<string, int> ForTeam(GoalDefinition goal, IReadOnlyDictionary<string, int> parameters, BoardRequest request)
+    {
+        var players = request.CharacterIds.Count;
+        if (request.Mode != BingoMode.Team || players < 2 || !DetectorCatalog.Pools(goal.Detector) || !parameters.TryGetValue("n", out var n))
+        {
+            return parameters;
+        }
+        return new Dictionary<string, int>(parameters) { ["n"] = TeamTarget(n, players) };
+    }
+
+    /// <summary>A solo target scaled for a team: 5 → 9, 20 → 35, 400 → 700 for two players.</summary>
+    public static int TeamTarget(int solo, int players)
+    {
+        // Decimal maths, so every game rounds the same way.
+        var scaled = (decimal)solo * (4 + 3 * (players - 1)) / 4;
+        var step = scaled switch
+        {
+            < 10 => 1m,
+            < 50 => 5m,
+            < 200 => 10m,
+            < 1000 => 25m,
+            _ => 50m,
+        };
+        var rounded = (int)(Math.Round(scaled / step, MidpointRounding.AwayFromZero) * step);
+        return Math.Max(rounded, solo + 1);
     }
 
     /// <summary>The board's random seed. Exposed for tests and for showing in debug output.</summary>

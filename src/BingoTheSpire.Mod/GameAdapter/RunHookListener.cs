@@ -66,6 +66,13 @@ public sealed class RunHookListener : HookListener
         return Task.CompletedTask;
     }
 
+    // Part of DoomKilled, which the combat listener sends.
+    public override Task BeforeDeath(Creature creature)
+    {
+        Adapter.Safe(nameof(BeforeDeath), () => Adapter.OnBeforeDeath(creature));
+        return Task.CompletedTask;
+    }
+
     [Emits(nameof(GoldGained))]
     public override Task AfterGoldGained(Player player)
     {

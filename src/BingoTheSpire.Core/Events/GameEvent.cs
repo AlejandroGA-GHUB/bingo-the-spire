@@ -29,6 +29,7 @@ namespace BingoTheSpire.Core.Events;
 [JsonDerivedType(typeof(Shuffled), nameof(Shuffled))]
 [JsonDerivedType(typeof(BlockGained), nameof(BlockGained))]
 [JsonDerivedType(typeof(DamageDealt), nameof(DamageDealt))]
+[JsonDerivedType(typeof(DoomKilled), nameof(DoomKilled))]
 [JsonDerivedType(typeof(DamageTaken), nameof(DamageTaken))]
 [JsonDerivedType(typeof(HpChanged), nameof(HpChanged))]
 [JsonDerivedType(typeof(PowerChanged), nameof(PowerChanged))]
@@ -116,9 +117,10 @@ public sealed record PlayerTurnStarted(ulong PlayerId) : GameEvent;
 
 /// <param name="CardType">"Attack", "Skill", "Power", "Status", "Curse", …</param>
 /// <param name="TargetKind">A <see cref="CreatureKind"/> value.</param>
+/// <param name="CardName">The card's name as shown in game, if known.</param>
 public sealed record CardPlayed(
     ulong PlayerId, string CardId, string CardType, int EnergySpent, int StarsSpent,
-    bool IsAutoPlay, string TargetKind) : GameEvent;
+    bool IsAutoPlay, string TargetKind, string? CardName = null) : GameEvent;
 
 public sealed record CardDrawn(ulong PlayerId, string CardId, bool FromHandDraw) : GameEvent;
 
@@ -141,11 +143,18 @@ public sealed record Shuffled(ulong PlayerId) : GameEvent;
 /// <param name="PlayerId">The player who gained Block, or whose pet did (see <c>CreatureKind</c>).</param>
 public sealed record BlockGained(ulong? PlayerId, string CreatureKind, uint? CombatId, int Amount, string? CardId) : GameEvent;
 
+/// <param name="DealerKind">A <see cref="CreatureKind"/> value; "none" for damage with no dealer, such as Poison.</param>
 /// <param name="Overkill">Damage beyond what was needed to kill. 0 on an exact kill.</param>
+/// <param name="TargetName">The target's name as shown in game, if known.</param>
 /// <remarks>A card's effects (damage, Block, powers) arrive before its <see cref="CardPlayed"/>.</remarks>
 public sealed record DamageDealt(
     ulong? DealerPlayerId, string DealerKind, string TargetKind, ulong? TargetPlayerId, string? TargetId, uint? TargetCombatId,
-    int Unblocked, int Blocked, int Overkill, bool TargetDied, string? CardId) : GameEvent;
+    int Unblocked, int Blocked, int Overkill, bool TargetDied, string? CardId, string? TargetName = null) : GameEvent;
+
+/// <summary>An enemy killed by Doom (which kills outright, without dealing damage).</summary>
+/// <param name="HpBefore">The enemy's HP just before Doom killed it.</param>
+/// <param name="Doom">Doom on the enemy. Equal to <paramref name="HpBefore"/> on an exact kill.</param>
+public sealed record DoomKilled(string? TargetId, uint? TargetCombatId, int HpBefore, int Doom, string? TargetName = null) : GameEvent;
 
 public sealed record DamageTaken(ulong PlayerId, int Unblocked, int Blocked, string DealerKind) : GameEvent;
 
@@ -153,9 +162,12 @@ public sealed record HpChanged(ulong PlayerId, int Delta, int CurrentHp, int Max
 
 /// <param name="PowerType">"Buff", "Debuff" or "None".</param>
 /// <param name="Delta">Change in amount (negative when reduced).</param>
+/// <param name="PowerName">The power's name as shown in game, if known.</param>
+/// <param name="OwnerName">The owner's name as shown in game, if known.</param>
 public sealed record PowerChanged(
     string PowerId, string PowerType, int Delta, int Amount,
-    string OwnerKind, ulong? OwnerPlayerId, string? OwnerId, uint? OwnerCombatId, ulong? ApplierPlayerId, string? CardId) : GameEvent;
+    string OwnerKind, ulong? OwnerPlayerId, string? OwnerId, uint? OwnerCombatId, ulong? ApplierPlayerId, string? CardId,
+    string? PowerName = null, string? OwnerName = null) : GameEvent;
 
 public sealed record OrbChanneled(ulong PlayerId, string OrbId) : GameEvent;
 

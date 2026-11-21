@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using BingoTheSpire.Core.Events;
@@ -296,7 +297,8 @@ internal static class Adapter
     public static void OnCardPlayed(CardPlay play) =>
         Publish(new CardPlayed(
             play.Player.NetId, play.Card.Id.Entry, play.Card.Type.ToString(),
-            play.Resources.EnergySpent, play.Resources.StarsSpent, play.IsAutoPlay, KindOf(play.Target)));
+            play.Resources.EnergySpent, play.Resources.StarsSpent, play.IsAutoPlay, KindOf(play.Target),
+            CardName: Shown(() => play.Card.Title)));
 
     public static void OnBlockGained(Creature creature, decimal amount, CardModel? cardSource) =>
         Publish(new BlockGained(PlayerIdOf(creature), KindOf(creature), creature.CombatId, ToInt(amount), cardSource?.Id.Entry));
@@ -313,7 +315,8 @@ internal static class Adapter
             Blocked: result.BlockedDamage,
             Overkill: result.OverkillDamage,
             TargetDied: target.IsDead,
-            CardId: cardSource?.Id.Entry));
+            CardId: cardSource?.Id.Entry,
+            TargetName: target.IsPlayer ? null : Shown(() => target.Name)));
 
     public static void OnDamageReceived(Creature target, DamageResult result, Creature? dealer)
     {
@@ -325,6 +328,11 @@ internal static class Adapter
 
     public static void OnHpChanged(Creature creature, decimal delta)
     {
+        if (!creature.IsPlayer)
+        {
+            // Doom kills an enemy by taking all its HP at once, just before it dies.
+            _lastEnemyHpLoss = (creature, creature.CurrentHp - ToInt(delta));
+        }
         if (creature.IsPlayer && creature.Player is { } player)
         {
             Publish(new HpChanged(player.NetId, ToInt(delta), creature.CurrentHp, creature.MaxHp));
@@ -344,7 +352,60 @@ internal static class Adapter
             OwnerId: owner?.Monster?.Id.Entry,
             OwnerCombatId: owner?.CombatId,
             ApplierPlayerId: PlayerIdOf(applier),
-            CardId: cardSource?.Id.Entry));
+            CardId: cardSource?.Id.Entry,
+            PowerName: Shown(() => power.Title.GetFormattedText()),
+            OwnerName: owner == null || owner.IsPlayer ? null : Shown(() => owner.Name)));
+    }
+
+    // Doom kills without dealing damage: the game takes the enemy's HP, then it dies, then it
+    // reports who died to Doom. The HP and Doom are kept from the first two steps for the third.
+    private static (Creature Creature, int HpBefore) _lastEnemyHpLoss;
+    private static readonly List<(Creature Creature, int HpBefore, int Doom)> _doomed = [];
+
+    public static void OnBeforeDeath(Creature creature)
+    {
+        if (creature.IsPlayer || _lastEnemyHpLoss.Creature != creature)
+        {
+            return;
+        }
+        var doom = creature.GetPowerAmount<DoomPower>();
+        if (doom > 0)
+        {
+            _doomed.Add((creature, _lastEnemyHpLoss.HpBefore, doom));
+        }
+    }
+
+    public static void OnDiedToDoom(IReadOnlyList<Creature> creatures)
+    {
+        foreach (var creature in creatures)
+        {
+            var index = _doomed.FindIndex(d => d.Creature == creature);
+            if (index >= 0 && !creature.IsPlayer)
+            {
+                var (_, hpBefore, doom) = _doomed[index];
+                Publish(new DoomKilled(creature.Monster?.Id.Entry, creature.CombatId, hpBefore, doom, Shown(() => creature.Name)));
+            }
+        }
+        _doomed.Clear();
+    }
+
+    /// <summary>A name as the game shows it, without formatting tags, or null if the game can't give one.</summary>
+    private static string? Shown(Func<string?> name)
+    {
+        try
+        {
+            var text = name();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return null;
+            }
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"\[/?[a-zA-Z_]+[^\]]*\]", "").Trim();
+            return text.Length > 0 ? text : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static string KindOf(Creature? creature)

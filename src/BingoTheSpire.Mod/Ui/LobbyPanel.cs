@@ -30,7 +30,7 @@ internal sealed class LobbyPanel
         (BingoMode.Lockout, "Lockout", "One board, race for squares",
             "One shared board. Complete a goal first and the square is yours. The first line wins. If the run ends with no line, whoever has the most squares wins. If someone gets so far ahead that nobody else can catch up on squares or still make a line, they win right away."),
         (BingoMode.Team, "Team", "One board, together",
-            "One shared board, filled together. When anyone completes a goal, it's filled for the whole team. There's no winner: see how many squares and lines you can make as a team."),
+            "One shared board, filled together. Counts add up across the team, like potions used or cards drawn in a turn, so their numbers are bigger. One-moment goals, like a single big hit, still need one player. There's no winner: see how many squares and lines you can make together."),
     ];
 
     private const string SoloText =

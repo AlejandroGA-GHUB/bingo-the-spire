@@ -12,7 +12,7 @@ Guidance for AI agents working on this repo.
 2. **Only the game adapter in `BingoTheSpire.Mod` touches game internals.** It turns game hooks into Core events, tagged with the player who caused them.
 3. **The mod only watches the game.** Patches are postfixes or official hook listeners that never change game state. No prefixes that skip the original method, no transpilers. Catch exceptions inside every hook so nothing reaches the game.
 4. **Determinism:** never use `string.GetHashCode()`, `System.Random`, the game's random number streams, or the clock for board generation. Use `StableHash` and our own seeded random number generator.
-5. **A goal is completed by one player alone.** Never add values up across players.
+5. **A goal is completed by one player alone,** except pooled goals in Team mode (spec 4.3). Never add values up across players anywhere else; a detector only pools when the catalog marks it `Pools` and the board is Team.
 6. **One build runs on main and beta.** Build against main's `sts2.dll`. Look up anything that may differ between branches by name with fallbacks, and turn off the goals that depend on it if it's missing. Don't branch on version strings.
    - **Never compare game enums by their compiled value.** They're compiled into our DLL as numbers, and the numbers change between branches. For example, `GameMode.Custom` = 3 on main, but 3 means `Dread` on beta. Read enums by name through the adapter.
    - Hooks whose signature differs between branches (e.g. `AfterDeath`) need a handler for each branch. See `notes/game-internals.md` (local).

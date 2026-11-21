@@ -3,7 +3,7 @@
   "name": "Bingo the Spire",
   "author": "Alejandro",
   "description": "In-game bingo boards for solo and co-op runs. Squares complete automatically as the game detects each goal.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "has_dll": true,
   "has_pck": false,
   "affects_gameplay": true,

@@ -6,11 +6,35 @@ namespace BingoTheSpire.Core.Detection;
 public readonly record struct Contribution(ulong PlayerId, int Amount);
 
 /// <summary>
-/// "Do X {n} times within a turn/combat/room/run". Counts per player and starts again from 0
-/// whenever the scope changes. Covers most goals.
+/// Who a pooled goal counts for. In Team mode, goals that count or add up amounts pool every
+/// player's share (spec section 4.3): progress shows on everyone's board, and the player whose
+/// share reaches the target completes it.
+/// </summary>
+internal static class Pool
+{
+    /// <summary>Key the team's shared total is kept under. Never a real player id.</summary>
+    public const ulong Team = ulong.MaxValue;
+
+    /// <summary>Whose board shows progress kept under <paramref name="key"/>.</summary>
+    public static IEnumerable<ulong> Members(DetectionContext context, ulong key, ulong? actor = null)
+    {
+        if (key != Team)
+        {
+            return [key];
+        }
+        return actor is { } a && !context.Players.Contains(a) ? context.Players.Append(a) : context.Players;
+    }
+
+    public static string Evidence(bool pooled, string evidence) => pooled ? evidence + " (team total)" : evidence;
+}
+
+/// <summary>
+/// "Do X {n} times within a turn/combat/room/run". Counts per player (or for the team when
+/// pooled) and starts again from 0 whenever the scope changes. Covers most goals.
 /// </summary>
 public sealed class CounterDetector(
-    Scope scope, int target, Func<GameEvent, DetectionContext, IEnumerable<Contribution>> count, Func<int, string> evidence) : IDetector
+    Scope scope, int target, Func<GameEvent, DetectionContext, IEnumerable<Contribution>> count, Func<int, string> evidence,
+    bool pooled = false) : IDetector
 {
     private readonly Dictionary<ulong, (long Key, int Count)> _counts = new();
 
@@ -20,40 +44,57 @@ public sealed class CounterDetector(
         {
             return;
         }
+
         // Show counters that belong to an earlier turn/combat as 0 again.
-        foreach (var (player, state) in _counts.ToList())
+        foreach (var (who, state) in _counts.ToList())
         {
             if (state.Key != key)
             {
-                _counts[player] = (key, 0);
-                sink.Progress(player, 0, target);
+                _counts[who] = (key, 0);
+                foreach (var player in Pool.Members(context, who))
+                {
+                    sink.Progress(player, 0, target);
+                }
             }
         }
+
         foreach (var c in count(evt, context))
         {
             if (c.Amount <= 0)
             {
                 continue;
             }
-            var total = (_counts.TryGetValue(c.PlayerId, out var s) && s.Key == key ? s.Count : 0) + c.Amount;
-            _counts[c.PlayerId] = (key, total);
-            sink.Progress(c.PlayerId, Math.Min(total, target), target);
+            var who = pooled ? Pool.Team : c.PlayerId;
+            var total = (_counts.TryGetValue(who, out var s) && s.Key == key ? s.Count : 0) + c.Amount;
+            _counts[who] = (key, total);
+            foreach (var player in Pool.Members(context, who, c.PlayerId))
+            {
+                sink.Progress(player, Math.Min(total, target), target);
+            }
             if (total >= target)
             {
-                sink.Complete(c.PlayerId, evidence(total));
+                sink.Complete(c.PlayerId, Pool.Evidence(pooled, evidence(total)));
             }
         }
     }
 }
 
-/// <summary>"Reach {n} in one go": completes when a single measured value reaches the target. Progress shows the best so far.</summary>
+/// <summary>
+/// "Reach {n} in one go": completes when a single measured value reaches the target. Progress
+/// shows the best so far in the current fight.
+/// </summary>
 public sealed class ThresholdDetector(
-    int target, Func<GameEvent, DetectionContext, Contribution?> measure, Func<int, string> evidence) : IDetector
+    int target, Func<GameEvent, DetectionContext, Contribution?> measure, Func<int, GameEvent, string> evidence) : IDetector
 {
     private readonly Dictionary<ulong, int> _best = new();
 
     public void Handle(GameEvent evt, DetectionContext context, IDetectionSink sink)
     {
+        if (evt is CombatStarting)
+        {
+            _best.Clear();
+            return;
+        }
         if (measure(evt, context) is not { } m)
         {
             return;
@@ -65,7 +106,49 @@ public sealed class ThresholdDetector(
         }
         if (m.Amount >= target)
         {
-            sink.Complete(m.PlayerId, evidence(m.Amount));
+            sink.Complete(m.PlayerId, evidence(m.Amount, evt));
+        }
+    }
+}
+
+/// <summary>
+/// "Have {n}+ gold at once". Pooled, it's the team's gold added together. The game only reports
+/// gold going up, so shop spending is taken off by hand; other losses are missed until the next gain.
+/// </summary>
+public sealed class GoldHeldDetector(int target, bool pooled = false) : IDetector
+{
+    private readonly Dictionary<ulong, int> _gold = new();
+    private readonly Dictionary<ulong, int> _best = new();
+
+    public void Handle(GameEvent evt, DetectionContext context, IDetectionSink sink)
+    {
+        switch (evt)
+        {
+            case GoldGained g:
+                _gold[g.PlayerId] = g.Gold;
+                Check(g.PlayerId, context, sink);
+                break;
+            case ItemPurchased { Gold: > 0 } i:
+                _gold[i.PlayerId] = Math.Max(0, _gold.GetValueOrDefault(i.PlayerId) - i.Gold);
+                break;
+        }
+    }
+
+    private void Check(ulong actor, DetectionContext context, IDetectionSink sink)
+    {
+        var who = pooled ? Pool.Team : actor;
+        var held = pooled ? _gold.Values.Sum() : _gold[actor];
+        if (held > _best.GetValueOrDefault(who))
+        {
+            _best[who] = held;
+            foreach (var player in Pool.Members(context, who, actor))
+            {
+                sink.Progress(player, Math.Min(held, target), target);
+            }
+        }
+        if (held >= target)
+        {
+            sink.Complete(actor, Pool.Evidence(pooled, $"held {held} gold"));
         }
     }
 }
@@ -170,7 +253,7 @@ public sealed class CardHitsDetector(int target) : IDetector
                     sink.Progress(played.PlayerId, Math.Min(hit.Count, target), target);
                     if (hit.Count >= target)
                     {
-                        sink.Complete(played.PlayerId, $"{played.CardId} hit {hit.Count} enemies");
+                        sink.Complete(played.PlayerId, $"{DisplayNames.Of(played.CardName, played.CardId, "a card")} hit {hit.Count} enemies");
                     }
                 }
                 break;
@@ -183,11 +266,11 @@ public sealed class CardHitsDetector(int target) : IDetector
 
 /// <summary>
 /// "Have {n} different debuffs from you on one enemy at once". Only debuffs the player applied
-/// count, so two players' debuffs are never added together.
+/// count, so two players' debuffs are never added together, unless the goal is pooled (Team).
 /// </summary>
-public sealed class DebuffVarietyDetector(int target) : IDetector
+public sealed class DebuffVarietyDetector(int target, bool pooled = false) : IDetector
 {
-    // (enemy, debuff) → players who applied some of it. Removed when the debuff runs out.
+    // (enemy, debuff) → who applied some of it (players, or the team). Removed when the debuff runs out.
     private readonly Dictionary<(uint Enemy, string Power), HashSet<ulong>> _appliers = new();
 
     public void Handle(GameEvent evt, DetectionContext context, IDetectionSink sink)
@@ -208,16 +291,20 @@ public sealed class DebuffVarietyDetector(int target) : IDetector
                 {
                     return;
                 }
+                var who = pooled ? Pool.Team : player;
                 if (!_appliers.TryGetValue(key, out var set))
                 {
                     _appliers[key] = set = [];
                 }
-                set.Add(player);
-                var count = _appliers.Count(kv => kv.Key.Enemy == enemy && kv.Value.Contains(player));
-                sink.Progress(player, Math.Min(count, target), target);
+                set.Add(who);
+                var count = _appliers.Count(kv => kv.Key.Enemy == enemy && kv.Value.Contains(who));
+                foreach (var member in Pool.Members(context, who, player))
+                {
+                    sink.Progress(member, Math.Min(count, target), target);
+                }
                 if (count >= target)
                 {
-                    sink.Complete(player, $"{count} debuffs on {power.OwnerId ?? "an enemy"}");
+                    sink.Complete(player, Pool.Evidence(pooled, $"{count} debuffs on {DisplayNames.Of(power.OwnerName, power.OwnerId, "an enemy")}"));
                 }
                 break;
         }
@@ -259,11 +346,12 @@ public sealed class BuffVarietyDetector(int target) : IDetector
 
 /// <summary>
 /// "Put {n}+ stacks of a debuff on one enemy". Tracks each player's own share of the stacks, so
-/// two players stacking the same debuff never add up.
+/// two players stacking the same debuff never add up, unless the goal is pooled (Team).
 /// </summary>
-public sealed class DebuffStacksDetector(int target, string? powerId, string what) : IDetector
+/// <param name="powerId">Only this debuff, or null for any.</param>
+public sealed class DebuffStacksDetector(int target, string? powerId, bool pooled = false) : IDetector
 {
-    private readonly Dictionary<(uint Enemy, string Power, ulong Player), int> _share = new();
+    private readonly Dictionary<(uint Enemy, string Power, ulong Who), int> _share = new();
 
     public void Handle(GameEvent evt, DetectionContext context, IDetectionSink sink)
     {
@@ -277,7 +365,8 @@ public sealed class DebuffStacksDetector(int target, string? powerId, string wha
         {
             return;
         }
-        // Stacks going down (decay, removal) shrink every player's share to at most what's left.
+
+        // Stacks going down (decay, removal) shrink every share to at most what's left.
         foreach (var key in _share.Keys.Where(k => k.Enemy == enemy && k.Power == power.PowerId).ToList())
         {
             _share[key] = Math.Min(_share[key], Math.Max(power.Amount, 0));
@@ -286,13 +375,20 @@ public sealed class DebuffStacksDetector(int target, string? powerId, string wha
         {
             return;
         }
-        var mine = (enemy, power.PowerId, player);
+
+        var who = pooled ? Pool.Team : player;
+        var mine = (enemy, power.PowerId, who);
         var share = Math.Min(_share.GetValueOrDefault(mine) + power.Delta, power.Amount);
         _share[mine] = share;
-        sink.Progress(player, Math.Min(share, target), target);
+        foreach (var member in Pool.Members(context, who, player))
+        {
+            sink.Progress(member, Math.Min(share, target), target);
+        }
         if (share >= target)
         {
-            sink.Complete(player, $"{share} {what} on {power.OwnerId ?? "an enemy"}");
+            var debuff = DisplayNames.Of(power.PowerName, power.PowerId, "a debuff");
+            var enemyName = DisplayNames.Of(power.OwnerName, power.OwnerId, "an enemy");
+            sink.Complete(player, Pool.Evidence(pooled, $"{share} {debuff} on {enemyName}"));
         }
     }
 }

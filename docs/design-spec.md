@@ -51,7 +51,6 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 **Not in v1** (see section 16 for later ideas)
 - Board size and difficulty settings (beyond the automatic 4×4 for Blitz), Blackout, solo Score mode.
 - Custom or user-written boards.
-- Team-only squares that scale with player count.
 - Web spectator view, OBS overlay, online leaderboards.
 - Anything that changes gameplay. The mod only watches.
 
@@ -80,10 +79,14 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 |---|---|---|---|
 | **Versus** (default) | Every player has **their own copy of the same board** | Each player fills their own squares | **First line.** Play continues; later placements are tracked (Alex 1st on floor 18, Sam 2nd on floor 23, …). If the run ends with no line, whoever has the most squares wins. Ties go to whoever reached that count first |
 | **Lockout** | **One shared board.** A square takes the color of the player who got it | The **first** player to complete a goal gets the square, and it's **locked** for everyone else | **First line, or a clinch** (section 4.3.1). If the run ends with neither, whoever has the most squares wins. Ties go to whoever reached that count first |
-| **Team** | **One shared board.** A square takes the color of the player who completed it | **Any one player** completing the goal fills it for the team | Cooperative. The result is squares filled, lines made, and the floor where the first line was made |
+| **Team** | **One shared board.** A filled square is simply DONE, whoever filled it | **The team works together.** Goals that count or add up amounts pool everyone's share (see below); goals about one moment need one player | Cooperative. The result is squares filled, lines made, and the floor where the first line was made |
 
 Rules for every mode:
-- **A goal is always completed by one player alone.** Numbers are never added up across players: "Gain 50+ Block in a turn" means *one* player gains 50, not the team combined.
+- **Versus and Lockout: a goal is always completed by one player alone.** Numbers are never added up across players: "Gain 50+ Block in a turn" means *one* player gains 50.
+- **Team: counts and amounts add up across the team,** within the goal's own turn, fight or run. "Draw 35+ cards in a single turn" counts both players' draws in the same turn; "Use 9 potions" counts everyone's potions; "Have 700+ gold" adds every purse.
+  - Pooled goals get bigger numbers: each player after the first adds 75% of the solo number, rounded to a clean value (2 players: 5 → 9, 20 → 35, 400 → 700).
+  - The square goes to whoever's share reached the target.
+  - **Not pooled** (one moment for one person): single hits, overkill, card cost, surviving one big hit, quick wins, low-HP wins, flawless fights, Strength, buff stacks and different buffs at once. Elites and bosses defeated already count for everyone in the fight.
 - In Versus and Lockout, the board only uses goals that **every** player's character can complete. In Team, a character's goals can appear if **anyone** is playing that character. Modded characters only get the general goals (section 6.4).
 - Lockout can be used to block other players (including taking the kill on an elite). That's part of the mode, and players choose it on purpose. Versus is the default for that reason.
 - If a player leaves or disconnects, their squares stay theirs. When they come back, they get the current board (section 7).
@@ -117,6 +120,8 @@ Rules for every mode:
 - **Look:** the board and the Bingo panel are an **open book** with curved pages, drawn in code so they're sharp at any resolution. Each square is a **paper note** taped to the page, with its difficulty as a colored corner. Headings use Mochiy Pop One and notes use Mali (both SIL OFL, embedded in the mod).
 - **Your board:** 5×5 grid of notes showing each goal's text, a **DONE** stamp on filled squares (gold when part of a finished line), and **progress on goals in progress** (e.g. "7/10 cards this turn", "Block 38/50"). A brass nameplate shows the score, "Board: code" and the mode ("Solo" in a one-player run, which plays by Versus rules); the difficulty key runs along the bottom of the page.
   - **Versus:** only your own squares. **Lockout:** squares someone else took are greyed out with "Taken by Sam". **Team:** every filled square is just DONE, whoever filled it.
+  - **Progress only shows while it can still count.** Turn, fight and one-moment goals show it during the fight and clear when the fight ends. Goals that build over the run (rest sites, potions used, cards removed, relics bought, elites, exact kills, gold held, flawless normal fights) keep their bars.
+  - Long goal text shrinks to fit its note.
 - **Teammate previews** (co-op): one small board per teammate showing only which cells are filled. **Clicking one opens that player's full board.** In Lockout and Team, the one shared board shows everyone's colors instead.
 - **Hover details** (filled squares only; the goal text is already on the note): who completed the square (if it wasn't you), on which floor and turn, and the evidence (e.g. "53 Block on turn 4, Act 2 floor 22").
 - **The game's own cursor** stays on screen over the bingo UI: no hand or text cursors, since the game only draws its own arrow.
@@ -190,13 +195,15 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 ### 6.3 Detectors
 - They're **plain C#** with no game types: small state machines that read game events (section 9.2) plus a read-only snapshot of the run.
 - They output `Completed(goalId, playerId, evidence)` and optionally `Progress(goalId, playerId, current, target)` for the in-progress counters.
-- **Each player is tracked separately.** Every event carries the player who caused it, and detectors never add values up across players.
+- **Each player is tracked separately.** Every event carries the player who caused it, and detectors never add values up across players, except pooled goals in Team mode (section 4.3).
 - They can be unit-tested by replaying recorded event logs, without starting the game.
 - **Most goals are one of two shapes:** a *counter* ("do X {n} times within a turn / fight / shop visit / run", restarting from 0 when that scope ends) or a *threshold* ("reach {n} in one go", e.g. one hit, gold held). A few have their own logic (flawless fights, hits from one card, debuffs on one enemy).
 - **What counts:**
   - A **turn** is one combat round: the player's turn plus the enemy turn after it. "Draw {n} cards in a turn" includes the opening hand.
   - **Damage** is the full hit as shown in game: HP lost, Block removed and overkill.
   - **Pets** (e.g. Necrobinder's Osty) count for their owner.
+  - **Kills by Poison or Doom** count for the player who last added Poison or Doom to that enemy, including exact kills (209 Doom on an enemy with 209 HP is exactly lethal).
+  - **Evidence** uses names as the game shows them ("12 Weak on Fuzzy Wurm Crawler"), in the game's language.
   - **Without losing HP** means the player's HP never went down during the fight, including HP paid for their own cards.
   - **Fights won** (elites, bosses, quick wins) count for every player in the fight. Skipping a fight with the dev console counts as winning it; the mod doesn't police cheats.
   - When a co-op player's share can't be told apart in the game's numbers (two players stacking Poison on one enemy), detectors track each player's own share instead.
@@ -367,6 +374,5 @@ The `id` must not change after release: the game uses it for its settings and co
   1. **Hand-picked boards from built-in goals.** Still fully checked by the game. The board code lists goal IDs instead of a seed.
   2. **Built-in goal templates with your own numbers** (e.g. "Gain {N} Block"). Still fully checked.
   3. **Free-text goals.** These become **squares you mark yourself**, clearly labeled, and any board with them is marked *Custom* in history and kept out of personal bests.
-- **Team-only squares** that scale with player count (e.g. "the team gains X Block in one turn"), Team mode only.
 - **Blackout** (with a check that the whole board can be completed in one run) and solo **Score** mode, after v1, once there's player feedback.
 - Board size and difficulty options; a "daily bingo" board code from the date; a web spectator view or OBS overlay; a community goal-list editor.

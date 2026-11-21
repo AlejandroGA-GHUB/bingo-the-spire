@@ -23,7 +23,8 @@ public sealed class GoalTracker
             {
                 throw new InvalidOperationException($"goal '{square.GoalId}' is not in goal list v{goals.Version}");
             }
-            return new Square(this, square.Index, goal.Id, DetectorCatalog.Create(goal.Detector, square.Params));
+            var detector = DetectorCatalog.Create(goal.Detector, square.Params, team: board.Mode == BingoMode.Team);
+            return new Square(this, square.Index, goal.Id, detector, DetectorCatalog.Lasting(goal.Detector));
         }).ToArray();
         OnDetectorError = onDetectorError;
     }
@@ -67,10 +68,28 @@ public sealed class GoalTracker
             }
         }
         _context.After(evt);
+
+        // Turn, fight and one-moment goals only show progress while it can still count.
+        if (evt is CombatEnded or RoomEntered)
+        {
+            foreach (var square in _squares.Where(s => !s.Lasting))
+            {
+                foreach (var (player, progress) in square.LastProgress.ToList())
+                {
+                    if (progress.Current > 0)
+                    {
+                        square.Progress(player, 0, progress.Target);
+                    }
+                }
+            }
+        }
     }
 
-    private sealed class Square(GoalTracker tracker, int index, string goalId, IDetector detector) : IDetectionSink
+    private sealed class Square(GoalTracker tracker, int index, string goalId, IDetector detector, bool lasting) : IDetectionSink
     {
+        /// <summary>Progress builds up over the run, so it stays shown between fights.</summary>
+        public bool Lasting { get; } = lasting;
+
         public Dictionary<ulong, (int Current, int Target)> LastProgress { get; } = new();
 
         public string GoalId { get; } = goalId;

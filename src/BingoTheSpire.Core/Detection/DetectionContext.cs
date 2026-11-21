@@ -21,6 +21,8 @@ public enum Scope
 public sealed class DetectionContext
 {
     private readonly List<ulong> _players = [];
+    private readonly Dictionary<(uint Enemy, string Power), ulong> _lastApplier = new();
+    private readonly Dictionary<(uint Enemy, string Power), int> _stacks = new();
 
     /// <summary>Every player in the run, from the last <see cref="RunAttached"/>.</summary>
     public IReadOnlyList<ulong> Players => _players;
@@ -45,6 +47,16 @@ public sealed class DetectionContext
     public int LastCombatRound { get; private set; }
 
     public RunPosition? At { get; private set; }
+
+    /// <summary>
+    /// The player who last added this power to this enemy in the current combat, e.g. to credit a
+    /// Poison or Doom kill. Kept after the power runs out.
+    /// </summary>
+    public ulong? LastApplier(uint enemy, string powerId) =>
+        _lastApplier.TryGetValue((enemy, powerId), out var player) ? player : null;
+
+    /// <summary>Stacks of a power on an enemy right now, in the current combat.</summary>
+    public int Stacks(uint enemy, string powerId) => _stacks.GetValueOrDefault((enemy, powerId));
 
     /// <summary>Key that changes whenever a counter with this scope should restart, or null if the scope isn't active.</summary>
     public long? ScopeKey(Scope scope) => scope switch
@@ -74,6 +86,15 @@ public sealed class DetectionContext
                 CombatIndex++;
                 InCombat = true;
                 LastCombatRound = 0;
+                _lastApplier.Clear();
+                _stacks.Clear();
+                break;
+            case PowerChanged { OwnerKind: CreatureKind.Enemy, OwnerCombatId: { } enemy } power:
+                _stacks[(enemy, power.PowerId)] = Math.Max(power.Amount, 0);
+                if (power.Delta > 0 && power.ApplierPlayerId is { } applier)
+                {
+                    _lastApplier[(enemy, power.PowerId)] = applier;
+                }
                 break;
         }
         Round = InCombat ? evt.At?.Round : null;

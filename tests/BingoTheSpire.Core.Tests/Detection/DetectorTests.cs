@@ -22,10 +22,15 @@ public class DetectorTests
         private long _seq;
 
         public Script(string detector, int? n = null, params ulong[] players)
+            : this(BingoMode.Versus, detector, n, players)
+        {
+        }
+
+        public Script(BingoMode mode, string detector, int? n, params ulong[] players)
         {
             var parameters = n is { } v ? new Dictionary<string, int> { ["n"] = v } : new Dictionary<string, int>();
             var goals = new GoalList(1, [new GoalDefinition("goal", "Goal", detector, [new GoalTier(1, parameters)])]);
-            var board = new BingoBoard(1, "TEST", 1, BingoMode.Versus, BoardDifficulty.Medium, 0,
+            var board = new BingoBoard(1, "TEST", 1, mode, BoardDifficulty.Medium, 0,
                 [new BoardSquare(0, "goal", 1, parameters, "Goal")]);
             _tracker = new GoalTracker(board, goals, (id, ex) => throw new Xunit.Sdk.XunitException($"{id} threw: {ex}"));
             _tracker.Completed += c => Completions.Add(c);
@@ -83,6 +88,10 @@ public class DetectorTests
 
         public Script Debuff(ulong? applier, uint enemy, string power, int delta, int amount) =>
             Send(new PowerChanged(power, "Debuff", delta, amount, CreatureKind.Enemy, null, "ENEMY", enemy, applier, null));
+
+        /// <summary>Damage with no dealer, the way Poison hurts an enemy.</summary>
+        public Script PoisonTick(uint enemy, int amount, int overkill = 0, bool died = false) =>
+            Send(new DamageDealt(null, CreatureKind.None, CreatureKind.Enemy, null, "ENEMY", enemy, amount, 0, overkill, died, null));
     }
 
     [Fact]
@@ -342,5 +351,188 @@ public class DetectorTests
         var board = new BingoBoard(1, "TEST", 1, BingoMode.Versus, BoardDifficulty.Medium, 0,
             [new BoardSquare(0, "bad", 1, new Dictionary<string, int>(), "Bad")]);
         Assert.Throws<KeyNotFoundException>(() => new GoalTracker(board, goals));
+    }
+
+    // ---- Team: pooled goals ------------------------------------------------------------------
+
+    [Fact]
+    public void Team_PotionsUsed_AddUpBothPlayers_AndTheLastOneCompletes()
+    {
+        var script = new Script(BingoMode.Team, "PotionsUsed", 3, Alex, Sam)
+            .Send(new PotionUsed(Alex, "FIRE_POTION"))
+            .Send(new PotionUsed(Sam, "FIRE_POTION"));
+        Assert.Equal(2, script.Progress[Alex]);
+        Assert.Equal(2, script.Progress[Sam]);
+        Assert.Empty(script.Completions);
+
+        script.Send(new PotionUsed(Sam, "BLOCK_POTION"));
+        var done = Assert.Single(script.Completions);
+        Assert.Equal(Sam, done.PlayerId);
+        Assert.Contains("team total", done.Evidence);
+    }
+
+    [Fact]
+    public void Team_CardsDrawnInTurn_AddUpWithinTheSameTurnOnly()
+    {
+        var script = new Script(BingoMode.Team, "CardsDrawnInTurn", 4, Alex, Sam).Fight()
+            .Send(new CardDrawn(Alex, "STRIKE", true)).Send(new CardDrawn(Alex, "STRIKE", true))
+            .Send(new CardDrawn(Sam, "STRIKE", true))
+            .NextRound()
+            .Send(new CardDrawn(Sam, "STRIKE", true));
+        Assert.Empty(script.Completions);
+        Assert.Equal(1, script.Progress[Alex]);
+
+        script.Send(new CardDrawn(Alex, "STRIKE", true)).Send(new CardDrawn(Alex, "STRIKE", true)).Send(new CardDrawn(Sam, "STRIKE", true));
+        Assert.Equal(Sam, Assert.Single(script.Completions).PlayerId);
+    }
+
+    [Fact]
+    public void Versus_SameGoal_NeverAddsUp()
+    {
+        var script = new Script("PotionsUsed", 3, Alex, Sam)
+            .Send(new PotionUsed(Alex, "P")).Send(new PotionUsed(Sam, "P")).Send(new PotionUsed(Sam, "P"));
+        Assert.Empty(script.Completions);
+        Assert.Equal(1, script.Progress[Alex]);
+        Assert.Equal(2, script.Progress[Sam]);
+    }
+
+    [Fact]
+    public void Team_OneMomentGoals_StayOnePlayer()
+    {
+        var script = new Script(BingoMode.Team, "BiggestHit", 20, Alex, Sam).Fight()
+            .Hit(Alex, 1, 12).Hit(Sam, 1, 12);
+        Assert.Empty(script.Completions);
+    }
+
+    [Fact]
+    public void Team_ElitesDefeated_AreNotCountedTwice()
+    {
+        var script = new Script(BingoMode.Team, "ElitesDefeated", 2, Alex, Sam).Fight("Elite").Win("Elite");
+        Assert.Empty(script.Completions);
+        Assert.Equal(1, script.Progress[Alex]);
+    }
+
+    [Fact]
+    public void Team_GoldHeld_AddsBothPurses_AndTakesOffShopSpending()
+    {
+        var script = new Script(BingoMode.Team, "GoldHeld", 300, Alex, Sam)
+            .Send(new GoldGained(Alex, 150))
+            .Send(new ItemPurchased(Alex, "Relic", 100))
+            .Send(new GoldGained(Sam, 190));
+        Assert.Empty(script.Completions);
+        Assert.Equal(240, script.Progress[Sam]);
+
+        script.Send(new GoldGained(Alex, 110));
+        Assert.Equal(Alex, Assert.Single(script.Completions).PlayerId);
+    }
+
+    [Fact]
+    public void Team_DebuffStacks_AddUpOnTheSameEnemy()
+    {
+        var script = new Script(BingoMode.Team, "PoisonStacks", 10, Alex, Sam).Fight()
+            .Debuff(Alex, 1, "POISON_POWER", 6, 6)
+            .Debuff(Sam, 1, "POISON_POWER", 4, 10);
+        Assert.Equal(Sam, Assert.Single(script.Completions).PlayerId);
+    }
+
+    [Theory]
+    [InlineData(5, 2, 9)]
+    [InlineData(20, 2, 35)]
+    [InlineData(400, 2, 700)]
+    [InlineData(2, 2, 4)]
+    [InlineData(1, 2, 2)]
+    [InlineData(4, 3, 10)]
+    public void TeamTarget_AddsThreeQuartersPerExtraPlayer_RoundedClean(int solo, int players, int expected) =>
+        Assert.Equal(expected, BoardBuilder.TeamTarget(solo, players));
+
+    [Fact]
+    public void TeamBoards_ScaleOnlyPooledGoals()
+    {
+        // One Ironclad or two build the same goals (the seed uses each character once), so only the numbers differ.
+        var one = BoardBuilder.Build(BuiltInGoals.List, new BoardRequest("TEAMSEED", BingoMode.Team, "Standard", ["IRONCLAD"]));
+        var two = BoardBuilder.Build(BuiltInGoals.List, new BoardRequest("TEAMSEED", BingoMode.Team, "Standard", ["IRONCLAD", "IRONCLAD"]));
+        var detectors = BuiltInGoals.List.Goals.ToDictionary(g => g.Id, g => g.Detector);
+        foreach (var (solo, team) in one.Squares.Zip(two.Squares))
+        {
+            Assert.Equal(solo.GoalId, team.GoalId);
+            if (DetectorCatalog.Pools(detectors[solo.GoalId]) && solo.Params.TryGetValue("n", out var n))
+            {
+                Assert.Equal(BoardBuilder.TeamTarget(n, 2), team.Params["n"]);
+                Assert.Contains(team.Params["n"].ToString(System.Globalization.CultureInfo.InvariantCulture), team.Text);
+            }
+            else
+            {
+                Assert.Equal(solo.Params, team.Params);
+            }
+        }
+    }
+
+    // ---- Kills by Poison and Doom --------------------------------------------------------------
+
+    [Fact]
+    public void ExactKills_PoisonKill_GoesToTheLastPlayerToApplyPoison()
+    {
+        var script = new Script("ExactKills", 1, Alex, Sam).Fight()
+            .Debuff(Sam, 1, "POISON_POWER", 5, 5)
+            .Debuff(Alex, 1, "POISON_POWER", 3, 8)
+            .PoisonTick(1, 8, died: true);
+        Assert.Equal(Alex, Assert.Single(script.Winners));
+    }
+
+    [Fact]
+    public void ExactKills_PoisonOverkill_DoesNotCount()
+    {
+        var script = new Script("ExactKills", 1).Fight()
+            .Debuff(Alex, 1, "POISON_POWER", 9, 9)
+            .PoisonTick(1, 6, overkill: 3, died: true);
+        Assert.Empty(script.Completions);
+    }
+
+    [Theory]
+    [InlineData(209, 209, true)]
+    [InlineData(250, 209, false)]
+    public void ExactKills_DoomKill_CountsWhenDoomEqualsHp(int doom, int hp, bool counts)
+    {
+        var script = new Script("ExactKills", 1, Alex, Sam).Fight()
+            .Debuff(Sam, 1, "DOOM_POWER", doom, doom)
+            .Send(new DoomKilled("ENEMY", 1, hp, doom));
+        Assert.Equal(counts ? [Sam] : [], script.Winners);
+    }
+
+    // ---- Progress between fights ---------------------------------------------------------------
+
+    [Fact]
+    public void FightGoals_ProgressClearsWhenTheFightEnds()
+    {
+        var script = new Script("BiggestHit", 50).Fight().Hit(Alex, 1, 30);
+        Assert.Equal(30, script.Progress[Alex]);
+
+        script.Win();
+        Assert.Equal(0, script.Progress[Alex]);
+
+        // The next fight starts from nothing, so a smaller hit shows again.
+        script.Fight().Hit(Alex, 1, 10);
+        Assert.Equal(10, script.Progress[Alex]);
+    }
+
+    [Fact]
+    public void RunGoals_KeepTheirProgressBetweenFights()
+    {
+        var script = new Script("PotionsUsed", 5).Fight().Send(new PotionUsed(Alex, "P")).Win().Room("Shop");
+        Assert.Equal(1, script.Progress[Alex]);
+    }
+
+    // ---- Evidence names ------------------------------------------------------------------------
+
+    [Fact]
+    public void DebuffStacks_Evidence_NamesTheDebuffAndTheEnemy()
+    {
+        var script = new Script("DebuffStacks", 5).Fight()
+            .Send(new PowerChanged("WEAK_POWER", "Debuff", 5, 5, CreatureKind.Enemy, null, "FUZZY_WURM_CRAWLER", 1, Alex, null));
+        Assert.Equal("5 Weak on Fuzzy Wurm Crawler", Assert.Single(script.Completions).Evidence);
+
+        var named = new Script("DebuffStacks", 5).Fight()
+            .Send(new PowerChanged("WEAK_POWER", "Debuff", 5, 5, CreatureKind.Enemy, null, "X", 1, Alex, null, "Faible", "Ver Flou"));
+        Assert.Equal("5 Faible on Ver Flou", Assert.Single(named.Completions).Evidence);
     }
 }

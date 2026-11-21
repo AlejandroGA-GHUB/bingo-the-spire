@@ -99,6 +99,13 @@ public sealed class CombatHookListener : HookListener
         return Task.CompletedTask;
     }
 
+    [Emits(nameof(DoomKilled))]
+    public override Task AfterDiedToDoom(PlayerChoiceContext choiceContext, IReadOnlyList<Creature> creatures)
+    {
+        Adapter.Safe(nameof(AfterDiedToDoom), () => Adapter.OnDiedToDoom(creatures));
+        return Task.CompletedTask;
+    }
+
     [Emits(nameof(PowerChanged))]
     public override Task AfterPowerAmountChanged(PlayerChoiceContext choiceContext, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
     {
