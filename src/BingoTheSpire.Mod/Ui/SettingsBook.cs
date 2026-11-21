@@ -48,9 +48,8 @@ internal static class SettingsBook
         left.AddChild(Body("Changes apply from your next run.", 14, BingoStyle.PageInkSoft));
         left.AddChild(Spacer(6));
         left.AddChild(Heading("Controller"));
-        left.AddChild(Body(Gamepad.PickBoardButton() != null
-            ? $"{Gamepad.BoardButtonName} opens the board. In the bingo books, move with the stick or d-pad, Accept picks, Back closes."
-            : "Every controller button is taken by the game: open the board from the bingo button in the top bar. In the bingo books, move with the stick or d-pad, Accept picks, Back closes.", 16, BingoStyle.PageInk));
+        left.AddChild(Body("In a run, press the top bar button (□ / X) and move along the top bar to the bingo button at its end; Accept opens the board. Before a run, R2 opens these bingo books. Move with the stick or d-pad, Accept picks, Back closes."
+            + (Gamepad.PickBoardButton() != null ? $" Without Steam Input, {Gamepad.BoardButtonName} also opens the board." : ""), 16, BingoStyle.PageInk));
 
         var listening = false;
         keyButton.MouseEntered += () => Sfx.Play(Sfx.Hover);

@@ -13,6 +13,9 @@ namespace BingoTheSpire.Mod.Ui;
 internal sealed class BingoIcon
 {
     public const int IconSize = 72;
+
+    /// <summary>The icon's node name (the top bar patch finds it by this).</summary>
+    public const string NodeName = "BingoTheSpireIcon";
     private const float DragThreshold = 6f;
 
     private readonly BingoSettings? _settings;
@@ -39,7 +42,7 @@ internal sealed class BingoIcon
 
         Root = new Control
         {
-            Name = "BingoTheSpireIcon",
+            Name = NodeName,
             CustomMinimumSize = new Vector2(IconSize, IconSize),
             Size = new Vector2(IconSize, IconSize),
             MouseFilter = Control.MouseFilterEnum.Stop,

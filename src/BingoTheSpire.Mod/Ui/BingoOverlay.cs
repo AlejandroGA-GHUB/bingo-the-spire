@@ -121,9 +121,8 @@ internal sealed class BingoOverlay
         }
         var key = BingoHotkey.ActiveKey?.ToString();
         overlay._icon.SetTooltip(key);
-        var pad = Gamepad.BoardButtonName;
-        overlay._board.SetFooter(key != null ? $"{key}{(pad != null ? $" or {pad}" : "")} to show or hide"
-            : pad != null ? $"{pad} to show or hide" : "Hotkey off (Settings in the lobby)");
+        // Controller players open the board from the top bar (spec 4.4); Back closes it.
+        overlay._board.SetFooter(key != null ? $"{key} to show or hide" : "Back to close");
         overlay.FlushNotices(1.5);
 
         if (runtime.Session != null)
@@ -301,6 +300,11 @@ internal sealed class BingoOverlay
                 && GodotObject.IsInstanceValid(topBar) && _icon.Root.GetParent() != topBar)
             {
                 _icon.Root.Reparent(topBar, keepGlobalTransform: false);
+            }
+            if (_icon.Root.GetParent() == MegaCrit.Sts2.Core.Nodes.NRun.Instance?.GlobalUi?.TopBar)
+            {
+                // Join the top bar's controller navigation now; the patch keeps it joined after the game rebuilds it.
+                Callable.From(() => Gamepad.JoinTopBar(_icon.Root)).CallDeferred();
             }
         }
         catch (Exception ex)

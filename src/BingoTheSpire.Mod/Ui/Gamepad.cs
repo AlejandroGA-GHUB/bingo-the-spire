@@ -119,6 +119,89 @@ internal static class Gamepad
 
     private const string CapturedMeta = "bingothespire_captured";
 
+    /// <summary>
+    /// Adds the bingo icon to the ends of the game's top bar row, so a controller can reach it: the
+    /// top panel button (□ / X) focuses the top bar, and moving right from its last element (or left
+    /// from its first) lands on the icon. With Steam Input every button is one of the game's actions,
+    /// so this is the controller's way to the board. Only focus links change; the game rebuilds them
+    /// whenever the top bar changes, and we add the icon again after it.
+    /// </summary>
+    public static void JoinTopBar(Control icon)
+    {
+        if (!GodotObject.IsInstanceValid(icon) || icon.GetParent() is not Control bar || !icon.IsVisibleInTree())
+        {
+            return;
+        }
+        // The game marks each element of the top bar row by making it its own neighbor above.
+        var row = new List<Control>();
+        void Collect(Node node)
+        {
+            foreach (var child in node.GetChildren())
+            {
+                if (child is not Control control || control == icon)
+                {
+                    continue;
+                }
+                if (control.FocusMode == Control.FocusModeEnum.All && control.IsVisibleInTree()
+                    && control.FocusNeighborTop.ToString() == control.GetPath().ToString())
+                {
+                    row.Add(control);
+                }
+                Collect(control);
+            }
+        }
+        Collect(bar);
+        if (row.Count == 0)
+        {
+            return;
+        }
+        var first = row.MinBy(c => c.GlobalPosition.X)!;
+        var last = row.MaxBy(c => c.GlobalPosition.X)!;
+        var path = icon.GetPath();
+        last.FocusNeighborRight = path;
+        first.FocusNeighborLeft = path;
+        icon.FocusNeighborLeft = last.GetPath();
+        icon.FocusNeighborRight = first.GetPath();
+        icon.FocusNeighborTop = path;
+        icon.FocusNeighborBottom = last.FocusNeighborBottom.IsEmpty ? path : last.FocusNeighborBottom;
+    }
+
+    /// <summary>
+    /// Calls <paramref name="press"/> when the controller's right trigger is pressed and
+    /// <paramref name="when"/> allows it, for as long as <paramref name="owner"/> exists. The game
+    /// turns the trigger into its "view discard pile" action, which is only used in fights.
+    /// </summary>
+    public static void OnRightTrigger(Node owner, Func<bool> when, Action press)
+    {
+        if (Engine.GetMainLoop() is not SceneTree tree)
+        {
+            return;
+        }
+        string[] actions = ["controller_right_trigger", "mega_view_discard_pile"];
+        void Poll()
+        {
+            if (!GodotObject.IsInstanceValid(owner))
+            {
+                tree.ProcessFrame -= Poll;
+                return;
+            }
+            try
+            {
+                // A keyboard key can also be bound to the game's action: only react while a controller is in use.
+                if (InUse && actions.Any(a => InputMap.HasAction(a) && Input.IsActionJustPressed(a)) && when())
+                {
+                    press();
+                }
+            }
+            catch (Exception ex)
+            {
+                tree.ProcessFrame -= Poll;
+                BingoLog.Warn($"couldn't read the controller's right trigger: {ex.Message}");
+            }
+        }
+        tree.ProcessFrame += Poll;
+    }
+
     /// <summary>With a controller in use, puts focus on the first thing in <paramref name="root"/> that takes it.</summary>
     public static void FocusFirst(Control root, Control? fallback = null)
     {

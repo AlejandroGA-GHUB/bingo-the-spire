@@ -306,6 +306,12 @@ internal sealed class BoardPanel
         feed.Size = new Vector2(_feedWidth, feed.Size.Y);
     }
 
+    private static readonly string[] TabLeft = ["controller_left_bumper", "mega_view_deck_and_tab_left"];
+    private static readonly string[] TabRight = ["controller_right_bumper", "mega_view_exhaust_pile_and_tab_right"];
+
+    private static bool JustPressed(string[] actions) =>
+        Gamepad.InUse && actions.Any(a => InputMap.HasAction(a) && Input.IsActionJustPressed(a));
+
     /// <summary>LB / RB while the board is open and on top: step through the players.</summary>
     private void WatchShoulders(Control root)
     {
@@ -323,21 +329,25 @@ internal sealed class BoardPanel
             }
             try
             {
+                // Raw buttons for a controller Godot reads itself; with Steam Input only the game's
+                // actions arrive (LB / RB are its tab left / right).
                 bool left = false, right = false;
                 foreach (var pad in Input.GetConnectedJoypads())
                 {
                     left |= Input.IsJoyButtonPressed(pad, JoyButton.LeftShoulder);
                     right |= Input.IsJoyButtonPressed(pad, JoyButton.RightShoulder);
                 }
+                var leftAction = JustPressed(TabLeft);
+                var rightAction = JustPressed(TabRight);
                 // Only while the board is the book on top: another book opened over it hides nothing of
                 // the board, so check that no book with a backdrop is open.
                 if (_canStep && root.Visible && !BookFrame.AnyBackdropOpen)
                 {
-                    if (left && !wasLeft)
+                    if ((left && !wasLeft) || leftAction)
                     {
                         Step?.Invoke(-1);
                     }
-                    else if (right && !wasRight)
+                    else if ((right && !wasRight) || rightAction)
                     {
                         Step?.Invoke(1);
                     }

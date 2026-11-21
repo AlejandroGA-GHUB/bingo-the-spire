@@ -75,6 +75,42 @@ internal sealed class LobbyPanel
         _icon = new BingoIcon(screen, null, _book.Toggle, icon => AboveSeedBox(screen) ?? UnderVersionText(icon));
         _icon.Draw(5, new HashSet<int>(), new HashSet<int>());
         _icon.Root.TooltipText = editable ? "Bingo settings for this run" : "Bingo settings (the host picks these)";
+        // Controller: R2 opens the panel. The game only uses it in fights, and on the Daily screen's
+        // leaderboard, where it's left alone.
+        var padHint = BingoStyle.Text("R2", 15, Colors.White, outline: 6, font: BingoFonts.Heading);
+        padHint.MouseFilter = Control.MouseFilterEnum.Ignore;
+        padHint.HorizontalAlignment = HorizontalAlignment.Center;
+        padHint.Position = new Vector2(0, BingoIcon.IconSize - 2);
+        padHint.Size = new Vector2(BingoIcon.IconSize, 20);
+        padHint.Visible = false;
+        _icon.Root.AddChild(padHint);
+        Gamepad.OnRightTrigger(_icon.Root,
+            () => _icon.Root.IsVisibleInTree() && !BookFrame.AnyBackdropOpen && !HasLeaderboard(screen),
+            () =>
+            {
+                Sfx.Play(Sfx.Click);
+                _book.Show();
+            });
+        // The hint shows while a controller is in use. The leaderboard check walks the screen, so it runs once a second.
+        if (Engine.GetMainLoop() is SceneTree hintTree)
+        {
+            var frames = 0;
+            var leaderboard = false;
+            void Tick()
+            {
+                if (!GodotObject.IsInstanceValid(padHint))
+                {
+                    hintTree.ProcessFrame -= Tick;
+                    return;
+                }
+                if (frames++ % 60 == 0)
+                {
+                    leaderboard = GodotObject.IsInstanceValid(screen) && HasLeaderboard(screen);
+                }
+                padHint.Visible = Gamepad.InUse && !leaderboard;
+            }
+            hintTree.ProcessFrame += Tick;
+        }
 
         var content = _book.Content;
         content.AddThemeConstantOverride("separation", 14);
@@ -179,6 +215,19 @@ internal sealed class LobbyPanel
     }
 
     /// <summary>Adds the bingo icon and settings book to a run-setup screen that has just opened.</summary>
+    /// <summary>The Daily screen pages its leaderboard with the triggers; R2 stays the game's there.</summary>
+    private static bool HasLeaderboard(Node node)
+    {
+        foreach (var child in node.GetChildren())
+        {
+            if ((child.GetType().Name == "NLeaderboardPageArrow" && child is CanvasItem { Visible: true }) || HasLeaderboard(child))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static void Attach(Control screen, StartRunLobby lobby, BingoSettings settings)
     {
         BingoNet.Use(lobby.NetService);
