@@ -43,8 +43,7 @@ internal sealed class BingoIcon
             CustomMinimumSize = new Vector2(IconSize, IconSize),
             Size = new Vector2(IconSize, IconSize),
             MouseFilter = Control.MouseFilterEnum.Stop,
-            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
-            Theme = BingoFonts.Theme,
+                        Theme = BingoFonts.Theme,
         };
         parent.AddChild(Root);
 
@@ -90,6 +89,12 @@ internal sealed class BingoIcon
     /// <summary>Replaces the corner number with a word (e.g. ON or OFF in the lobby).</summary>
     public void SetBadge(string text, Color color)
     {
+        _badge.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
+        _badge.HorizontalAlignment = HorizontalAlignment.Center;
+        _badge.OffsetLeft = -16;
+        _badge.OffsetRight = 16;
+        _badge.OffsetTop = -24;
+        _badge.OffsetBottom = 12;
         _badge.Text = text;
         _badge.AddThemeColorOverride("font_color", color);
     }
@@ -168,7 +173,6 @@ internal sealed class BingoIcon
                 if (!_dragging && motion.GlobalPosition.DistanceTo(_pressPosition) > DragThreshold)
                 {
                     _dragging = true;
-                    Root.MouseDefaultCursorShape = Control.CursorShape.Drag;
                 }
                 if (_dragging)
                 {
@@ -185,7 +189,6 @@ internal sealed class BingoIcon
                 {
                     var screen = Root.GetViewportRect().Size;
                     _settings.SetIconPosition((Root.GlobalPosition.X / screen.X, Root.GlobalPosition.Y / screen.Y));
-                    Root.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
                 }
                 _pressed = false;
                 _dragging = false;

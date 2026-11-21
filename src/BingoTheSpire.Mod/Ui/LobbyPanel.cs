@@ -57,7 +57,7 @@ internal sealed class LobbyPanel
         var editable = role != NetRole.Client;
 
         _book = new BookFrame(screen, "BingoTheSpireLobbyPanel", ContentWidth, backdrop: true);
-        _icon = new BingoIcon(screen, null, _book.Toggle, UnderVersionText);
+        _icon = new BingoIcon(screen, null, _book.Toggle, icon => AboveSeedBox(screen) ?? UnderVersionText(icon));
         _icon.Draw(5, new HashSet<int>(), new HashSet<int>());
         _icon.Root.TooltipText = editable ? "Bingo settings for this run" : "Bingo settings (the host picks these)";
 
@@ -266,7 +266,6 @@ internal sealed class LobbyPanel
 
         if (editable)
         {
-            note.Slot.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
             note.Slot.GuiInput += evt =>
             {
                 if (evt is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
@@ -276,7 +275,6 @@ internal sealed class LobbyPanel
                 }
             };
         }
-        note.Slot.TooltipText = Modes[index].Text;
         return note;
     }
 
@@ -306,7 +304,6 @@ internal sealed class LobbyPanel
             Text = text,
             FocusMode = Control.FocusModeEnum.None,
             CustomMinimumSize = new Vector2(96, 46),
-            MouseDefaultCursorShape = editable ? Control.CursorShape.PointingHand : Control.CursorShape.Arrow,
         };
         button.AddThemeFontOverride("font", BingoFonts.Heading);
         button.AddThemeFontSizeOverride("font_size", 19);
@@ -350,6 +347,7 @@ internal sealed class LobbyPanel
             Editable = editable,
             CustomMinimumSize = new Vector2(ColumnWidth, 40),
             CaretBlink = true,
+            MouseDefaultCursorShape = Control.CursorShape.Arrow, // the game only draws its own cursor for the arrow
         };
         var line = new StyleBoxFlat { BgColor = new Color(0, 0, 0, 0.02f), BorderColor = BingoStyle.Unpicked, BorderWidthBottom = 2 };
         line.ContentMarginLeft = line.ContentMarginRight = 4;
@@ -367,6 +365,23 @@ internal sealed class LobbyPanel
         box.AddThemeColorOverride("caret_color", BingoStyle.PageInk);
         box.AddThemeColorOverride("selection_color", BingoStyle.Brass with { A = 0.4f });
         return box;
+    }
+
+    /// <summary>Custom run: centered just above the run's seed box (above its label, if the label is in the way).</summary>
+    private static Vector2? AboveSeedBox(Control screen)
+    {
+        if (screen.GetNodeOrNull<Control>("%SeedInput") is not { } seed || !seed.IsVisibleInTree())
+        {
+            return null;
+        }
+        var box = seed.GetGlobalRect();
+        var spot = new Vector2(box.GetCenter().X - BingoIcon.IconSize / 2f, box.Position.Y - BingoIcon.IconSize - 12);
+        if (screen.GetNodeOrNull<Control>("%SeedLabel") is { } label && label.IsVisibleInTree()
+            && label.GetGlobalRect().Intersects(new Rect2(spot, new Vector2(BingoIcon.IconSize, BingoIcon.IconSize))))
+        {
+            spot.Y = label.GetGlobalRect().Position.Y - BingoIcon.IconSize - 8;
+        }
+        return spot;
     }
 
     /// <summary>

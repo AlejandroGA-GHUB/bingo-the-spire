@@ -55,8 +55,7 @@ internal sealed class BookFrame
             FocusMode = Control.FocusModeEnum.None,
             TooltipText = "Close",
             Size = new Vector2(46, 46),
-            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
-        };
+                    };
         _close.AddThemeFontOverride("font", BingoFonts.NoteBold);
         _close.AddThemeFontSizeOverride("font_size", 22);
         foreach (var (state, color) in new[] { ("normal", BingoStyle.Brass), ("hover", BingoStyle.Brass.Lightened(0.15f)), ("pressed", BingoStyle.Brass.Darkened(0.1f)) })

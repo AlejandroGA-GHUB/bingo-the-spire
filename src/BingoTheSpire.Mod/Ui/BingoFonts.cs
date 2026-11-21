@@ -23,7 +23,31 @@ internal static class BingoFonts
     public static Font NoteBold => _noteBold ??= Load("Mali-Bold.ttf");
 
     /// <summary>Put on the root of each bingo UI, so every control in it uses Mali unless told otherwise.</summary>
-    public static Theme Theme => _theme ??= new Theme { DefaultFont = Note, DefaultFontSize = 18 };
+    public static Theme Theme => _theme ??= BuildTheme();
+
+    private static Theme BuildTheme()
+    {
+        var theme = new Theme { DefaultFont = Note, DefaultFontSize = 18 };
+        var paper = new StyleBoxFlat
+        {
+            BgColor = BingoStyle.Paper,
+            BorderColor = BingoStyle.PageInkSoft,
+            ShadowColor = new Color(0, 0, 0, 0.35f),
+            ShadowSize = 6,
+            ShadowOffset = new Vector2(0, 3),
+            AntiAliasing = true,
+        };
+        paper.SetBorderWidthAll(2);
+        paper.SetCornerRadiusAll(4);
+        paper.SetContentMarginAll(10);
+        theme.SetStylebox("panel", "TooltipPanel", paper);
+        theme.SetFont("font", "TooltipLabel", NoteBold);
+        theme.SetFontSize("font_size", "TooltipLabel", 17);
+        theme.SetColor("font_color", "TooltipLabel", BingoStyle.PageInk);
+        theme.SetColor("font_shadow_color", "TooltipLabel", Colors.Transparent);
+        theme.SetConstant("outline_size", "TooltipLabel", 0);
+        return theme;
+    }
 
     private static Font Load(string file)
     {

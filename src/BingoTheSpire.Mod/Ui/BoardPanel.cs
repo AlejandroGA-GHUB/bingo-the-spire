@@ -328,9 +328,8 @@ internal sealed class BoardPanel
                 _barRow.Visible = false;
             }
 
-            Note.Slot.TooltipText = $"{Square.Text}\nDifficulty {Square.Difficulty} of 5"
-                + (_isTaken ? $"\n\nTaken by {takenBy}" : "")
-                + ((filled || _isTaken) && Evidence.Length > 0 ? $"\n\n✔ {Evidence}" : "");
+            // Hover only says what happened and where; the goal itself is already on the note.
+            Note.Slot.TooltipText = (filled || _isTaken) && Evidence.Length > 0 ? Evidence : "";
         }
 
         public void SetProgress(int current, int target)
