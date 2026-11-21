@@ -1,12 +1,11 @@
 # Bingo the Spire: design spec
 
 > **This is the source of truth for the design.** If code and this document disagree, one of them is wrong: fix the code or update this doc in the same change.
-> The first draft is kept at [`archive/sts2_bingo_v0_2026-11-20.md`](archive/sts2_bingo_v0_2026-11-20.md) for history only. Where it disagrees with this doc, this doc wins.
 
 | | |
 |---|---|
-| Status | Design agreed, repo skeleton set up, no gameplay code yet |
-| Last updated | 2026-11-20 |
+| Status | v1: solo and co-op complete |
+| Last updated | 2026-11-21 |
 | Game versions checked | main `v0.111.1`, beta `v0.113.1` |
 
 ---
@@ -19,26 +18,20 @@ A Slay the Spire 2 mod that puts a **bingo board in every run**. Squares fill in
 - **Solo:** try to complete a line before the run ends.
 - **Co-op:** everyone is in **the same run** (the game's own multiplayer), and you play one of three bingo modes against or with your teammates (section 4).
 - **The same board can be replayed:** it's built from the run seed (or a bingo seed you type in), so a board can be shared and played again.
-- **Works next to other mods:** modded characters, events, cards and relics don't break it (section 8).
+- **Works next to other mods:** modded characters, events, cards and relics don't break it (section 6.4).
 - **Works on main and beta:** one build of the mod runs on both Steam branches. Both are supported in v1 (section 9).
 
-## 2. Why, and what already exists
+## 2. Compared with playing bingo by hand
 
-Checked 2026-11-20 on Nexus (all 1,020 StS2 mods, full text), Steam Workshop, GitHub, Thunderstore, and the web in English and Chinese. **No StS2 mod plays bingo in the game with automatic marking.**
-
-People already play StS2 bingo by hand on Bingosync, and on *Spire Lockout Bingo* (sweet115.github.io/spire-lockout-bingo), a web page where you mark squares yourself. That shows people want it. This mod adds:
+StS2 bingo can be played on web boards like Bingosync, where players mark squares themselves. This mod adds:
 - **detection by the game**, so there's no honor system,
 - **the board inside the game**, so there's no second window,
 - **exact-value goals** settled by code (e.g. exact lethal on an elite),
 - **boards balanced by difficulty**.
 
-Related projects, so this one stays different: Spire Race (same-seed racing, no bingo), SPIRECRAFT (single-player custom challenges), HollowKnight.BingoSync (auto-marking for another game).
-
-Before release: ask once in the StS2 modding Discord whether anyone else is building this.
-
 ## 3. Goals and non-goals
 
-**Goals for v1**
+**v1 includes**
 1. Solo and co-op bingo in any run, with no setup needed.
 2. Every square is checked by the game. If the game can't check a goal, the goal isn't on the list.
 3. The same seed, characters and versions always give the same board.
@@ -61,7 +54,7 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 | Where | What the player sees |
 |---|---|
 | **Every screen where a run is set up** (character select solo or co-op, custom run, and beta's extra modes) | The **bingo icon** (the same one as in a run) under the game's version text in the top right, or just above the seed box on the custom run screen, with an ON or OFF badge. It opens the Bingo panel |
-| **The Bingo panel** | An open book (section 4.4). an **ON / OFF switch** (a colored pill slides behind the picked word; remembered between runs, on by default), the **board difficulty** as three small notes (Easy / Medium / Hard, explained under them), the **bingo-seed box**, and in co-op the three **modes as notes to pick from**, with the picked mode explained in plain words on the right-hand page |
+| **The Bingo panel** | An open book (section 4.4) with an **ON / OFF switch** (a colored pill slides behind the picked word; remembered between runs, on by default), the **board difficulty** as three small notes (Easy / Medium / Hard, explained under them), the **bingo-seed box**, and in co-op the three **modes as notes to pick from**, with the picked mode explained in plain words on the right-hand page |
 | **Co-op** | Only the **host** sets the bingo options. Other players see them, read-only, and they're sent to them over the game's own co-op connection |
 
 - **The bingo-seed box** (labelled "Board seed" in the game) takes nothing (the board comes from the run seed), a bingo seed, or a full board code (section 5). The hint leads with the common case: leave it empty for the run's seed, or paste the board seed shown at the top of any board ("Board: ...") to play that board instead. It then says which one it read; a bad entry is shown in red and turns bingo off for that run.
@@ -84,7 +77,7 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 
 Rules for every mode:
 - **Versus and Lockout: a goal is always completed by one player alone.** Numbers are never added up across players: "Gain 50+ Block in a turn" means *one* player gains 50.
-- **Team: counts and amounts add up across the team,** within the goal's own turn, fight or run. "Draw 35+ cards in a single turn" counts both players' draws in the same turn; "Use 9 potions" counts everyone's potions; "Have 700+ gold" adds every purse.
+- **Team: counts and amounts add up across the team,** within the goal's own turn, fight or run. "Draw 25+ cards in a single turn" counts both players' draws in the same turn; "Use 9 potions" counts everyone's potions; "Have 1050+ gold" adds every purse.
   - Pooled goals get bigger numbers: each player after the first adds 75% of the solo number, rounded to a clean value (2 players: 5 → 9, 10 → 18, 20 → 35, 400 → 700).
   - A tier can set its 2-player number by hand instead (`"team": { "n": 6 }`), for fine-tuning; each further player adds the same step again.
   - **Flawless fights pool too:** every player who wins a normal fight without losing HP adds one, so a fight where both stay clean counts twice.
@@ -112,8 +105,7 @@ Rules for every mode:
 
 **Details:**
 - The host checks for a clinch after every accepted claim, at the same moment it checks for lines.
-- Unclaimed squares count as still possible even when they can no longer be done in this run (e.g. an Act 1 goal after Act 1). That makes the rule safe: it can be slow to call a clinch, but it can never call one wrongly. Spotting squares that can no longer be done is a later improvement.
-- The UI shows what each player needs, e.g. "Alex needs 2 more squares to clinch" or "Sam still has 1 open line".
+- Unclaimed squares count as still possible even when they can no longer be done in this run (e.g. an Act 1 goal after Act 1). That makes the rule safe: it can be slow to call a clinch, but it can never call one wrongly. Spotting squares that can no longer be done is a later idea (section 16).
 - After a win, play continues and later placements are tracked, as in the other modes.
 
 ### 4.4 In-run UI
@@ -137,7 +129,7 @@ Rules for every mode:
 - **Toasts** for your own completions and important events (a teammate's bingo, a locked square you were working on). A finished square shows a green card with a white "SQUARE COMPLETE!" label sitting on its top edge.
 - **Problems are shown, not just logged:** an amber toast in the run says what happened and what it means, e.g. "BINGO IS OFF: the host turned bingo off for this run", "BOARD STARTED FRESH", "PROGRESS NOT SAVED: if you quit and Continue, the board starts fresh", "A SQUARE IS STUCK" (a goal hit an error and can't be completed this run), "DIFFERENT VERSIONS" between host and player, and "NOT IN HISTORY". Ones raised before the run screen is up wait for it.
 - **Fonts stay ours** when another mod swaps the game's fonts: our text controls carry the marker CznStyleUI checks to leave a control alone.
-- **Mini-board** that can be pinned in a corner: about 120 px, colors only, hover a cell to see its goal.
+- **The bingo button is a mini-board:** filled squares green, squares in a finished line gold. In the lobby it carries an ON or OFF badge. It can be dragged anywhere; right-click (or Settings) puts it back by the run timer.
 - **Results** a moment after the game's own end-of-run screen appears, as an open book over it, with just "BINGO!" on the nameplate. Left page: the board code with its copy clip, the run's facts (mode, difficulty, character in solo, run result, act and floor reached, play time, date) and, in co-op, placements (or your team) with each player's character, squares and lines. Right page: every line with its act, floor and play time, then squares as a bar per player (one team bar in Team) and squares done per difficulty. A **Past runs** button sits underneath.
 - **Settings** (a book opened from **Settings** in the lobby's bingo panel, saved to `settings.json` at once):
   - **Board hotkey:** click, then press any plain key; keys the game already uses are refused with the reason. Or turn it off. Applies from the next run.
@@ -230,10 +222,10 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 - If another mod changes the game so much that a goal can never be completed, that's acceptable. That should be rare, and it's the player's choice to combine those mods.
 
 ### 6.5 First goal list (v1)
-The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (version 1, 45 goals):
-- **41 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy, expensive cards and 3+ cost cards per fight; exhaust, shuffles and created cards; damage per turn, single hits, overkill, exact-lethal kills, kills on the first turn of a fight (counted over the run) hits and kills from one card; Block per turn; flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
-- **6 character goals:** Ironclad Strength, Silent Poison, Defect orbs, Necrobinder pet damage and Regent stars.
-- **Still to add,** because they need more events from the game: deck and run state (fully upgraded deck, unique cards, number of relics) and time (act cleared within a time limit). The [v0 draft §6](archive/sts2_bingo_v0_2026-11-20.md) has more ideas.
+The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (goal list version 6, 44 goals):
+- **39 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy, expensive cards and 3+ cost cards per fight; exhaust, shuffles and created cards; damage per turn, single hits, overkill, exact-lethal kills, kills on the first turn of a fight (counted over the run), hits and kills from one card; Block per turn; flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
+- **5 character goals:** Ironclad Strength, Silent Poison, Defect orbs, Necrobinder pet damage and Regent stars.
+- **Not yet possible,** because they need more events from the game: deck and run state (fully upgraded deck, unique cards, number of relics) and time (act cleared within a time limit).
 
 ## 7. Co-op syncing
 
@@ -244,13 +236,13 @@ The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (version 1, 45 goals
   1. The host applies the mode's rules (Lockout and Team: the first claim for a square wins it; Versus: accept) and gives the result an **order number**. A claim for a square that player already has gets no result at all.
   2. The host sends the **result** to everyone, and every game applies results in order, so all boards stay the same. Results also go into each game's journal (section 8).
   3. Claims for squares that are already taken aren't sent. A race that's lost shows "Too late: Sam got it first".
-- **Lobby options:** the host's bingo settings (on/off, bingo seed, mode) are sent to everyone in the lobby: when the host changes them, when a player joins, and when a client's Bingo panel asks for them.
+- **Lobby options:** the host's bingo settings (on/off, difficulty, bingo seed, mode) are sent to everyone in the lobby: when the host changes them, when a player joins, and when a client's Bingo panel asks for them.
 - **One sync for start, Continue and rejoin:** whenever a client's run starts, it sends the host a **hello** with its board's hash. The host answers with a **snapshot**: on/off, its board code, its board hash, and every result so far.
   - If the client built a different board (e.g. it missed the lobby settings), it rebuilds the host's board from the code, and its own progress so far is claimed again.
   - The client then resets its board to exactly the snapshot. This also repairs a client whose saved results drifted from the host's after a Continue.
   - If the client can't build the host's board at all (the hashes still differ), bingo is turned off for that client with a clear message, and the run itself is not affected.
 - **If the host leaves:** the co-op run itself depends on the host, so bingo ends with the run. Nothing needs to take over.
-- **Missing the mod or a different version:** the mod is marked as affecting gameplay, so the game itself compares mod lists when someone joins, and blocks the join if they don't match. This takes care of "the other player needs the mod" without extra code (to be confirmed in spike B).
+- **Missing the mod or a different version:** the mod is marked as affecting gameplay, so the game itself compares mod lists when someone joins, and blocks the join if they don't match. This takes care of "the other player needs the mod" without extra code. If versions still differ, the "DIFFERENT VERSIONS" notice says so (section 4.4).
 
 ## 8. Saving, continuing and history
 
@@ -292,7 +284,7 @@ The adapter turns everything into **Core events** (`CardPlayed`, `BlockGained`, 
 | Patching | Harmony 2.4.2 (`0Harmony.dll`, comes with the game) |
 | Mod loading | The game's built-in mod loader: `mods/<folder>/<id>.json` + `<id>.dll` |
 | Entry point | A class marked `[ModInitializer("Initialize")]` |
-| BaseLib | Allowed. Use it only where it saves real work (e.g. UI helpers), because every dependency also has to work on both branches |
+| Dependencies | None beyond the game. Fonts (SIL OFL) are embedded |
 
 ```
 BingoTheSpire.sln
@@ -301,7 +293,9 @@ src/
   BingoTheSpire.Mod/      the mod: entry point, game adapter (hooks/patches), network messages, Godot UI, saving
 tests/
   BingoTheSpire.Core.Tests/  unit, determinism and rule tests; replays of recorded event logs
-docs/                     this spec, guides, archive
+tools/
+  BranchCheck/            checks the built mod against the main and beta game files
+docs/                     this spec and the README's screenshots
 refs/  (gitignored)       reference copies of game files for main and beta, used to build and for the branch check
 ```
 
@@ -310,9 +304,9 @@ Manifest (`BingoTheSpire.json`):
 {
   "id": "BingoTheSpire",
   "name": "Bingo the Spire",
-  "author": "…",
-  "description": "In-game, auto-detected bingo boards for solo and co-op runs.",
-  "version": "0.1.0",
+  "author": "Texin",
+  "description": "In-game bingo boards for solo and co-op runs. Squares complete automatically as the game detects each goal.",
+  "version": "0.4.0",
   "has_dll": true,
   "has_pck": false,
   "affects_gameplay": true,
@@ -320,28 +314,14 @@ Manifest (`BingoTheSpire.json`):
   "dependencies": []
 }
 ```
-The `id` must not change after release: the game uses it for its settings and co-op checks, and it names the DLL. The display name can change freely (section 15).
+The `id` must never change: the game uses it for its settings and co-op checks, and it names the DLL. The display name can change freely. The manifest's `version` is the only version number: the DLL takes its version from it.
 
-## 11. Milestones
+## 11. Releases
 
-0. **Repo skeleton.** Solution, projects, docs, build that copies the mod into the game's `mods` folder. *(done when the empty mod shows up in the game's mod list on both branches)*
-1. **Spike A: events and recorder (solo).**
-   - Official hook listener, plus Harmony fallback for one event.
-   - A JSON-lines event recorder, plus a startup log of which events are available.
-   - Find the data folder.
-   - Run once on main and once on beta.
-   - *Done when one Act 1 run on each branch produces a sensible event log.*
-2. **Spike B: co-op messages and lobby UI.**
-   - One custom message sent both ways in a co-op run.
-   - The bingo button and panel added to the lobby, with the setting sent from host to client.
-   - Confirm that a client without the mod is turned away when joining.
-   - *Needs two players: the user and a friend or second PC.*
-3. **Core: events, detectors and tests.** Core event model, the first 40–60 detectors, and replay tests that run against both branches' recordings.
-4. **Board builder.** Goal-list JSON, the balanced builder, the stable hash and random number generator, determinism tests, board codes.
-5. **Solo, complete.** Board UI, mini-board, toasts, progress counters, seed entry (custom run and normal run), save and continue, results, history.
-6. **Co-op.** Messages, host-side rules for Versus, Lockout and Team, teammate previews and full-board view, feed, "one away" marker, rejoin snapshot.
-7. **Polish.** Settings, colorblind palette, controller navigation, branch check, error messages.
-8. **Release v1.** Main and beta, solo and co-op. **Solo and co-op ship together, or not at all.** There's no solo-only release. Shared mainly through the **Steam Workshop** (which brings its own visibility) and **Reddit** posts, with a short demo clip. A Nexus page is optional.
+- **Release builds** are made with `dotnet build -c Release`. They leave out the dev console commands (section 12), which only exist in debug builds.
+- The mod is the `BingoTheSpire` folder in the game's `mods` folder: `BingoTheSpire.dll`, `BingoTheSpire.json` and the two font licenses.
+- **Versions:** the manifest's `version` is raised for every build that's shared. Co-op players need the same version; the game compares mod lists when someone joins.
+- **Goal list version:** raised whenever goals change in a way that changes boards, so old board codes are refused clearly instead of building a different board (section 5).
 
 ## 12. Testing
 
@@ -369,24 +349,21 @@ The `id` must not change after release: the game uses it for its settings and co
 | Risk | What to do about it |
 |---|---|
 | Early Access patches change hooks or signatures | Official hooks first; a thin adapter layer; listener groups loaded separately; goals left out when their events aren't available; the branch check tool; replaying recordings after every update |
-| Listening to the official hooks has side effects on saves or co-op | Confirm in spike A. Fallback: Harmony postfixes |
-| Main and beta drift apart while we're building | Build against main, check against beta often, use per-branch adapters only where needed |
+| Listening to the official hooks has side effects on saves or co-op | Listeners only read; Harmony postfixes are the fallback for anything a hook can't cover |
+| Main and beta drift apart | Build against main, run the branch check against beta after every update, use per-branch adapters only where needed |
 | Another mod patches the same methods | Postfixes only; never skip the original method; never use transpilers; catch errors inside every patch |
 | Co-op desync from the mod | The mod never changes game state. Bingo state is separate from the game state and is synced only through our own messages, with the host deciding |
 | Lockout griefing | It's opt-in. Versus is the default |
-| Testing co-op needs two people who own the game | Rules and detectors are tested offline. Solo testing covers most of the in-game work. Co-op checkpoints are planned with a friend |
-| BaseLib or other dependencies lag behind beta | Use as few dependencies as possible. The core has none |
+| Dependencies lag behind beta | The mod has none beyond the game |
 
 ## 14. Licensing and repo
 
-- The repo is **public, but not open source at first**. `LICENSE` says *all rights reserved*: people can read the code, but not copy it, change it or reuse it without permission. Note that GitHub's terms still let others view and fork public repos on GitHub.
-- We'll revisit after release (e.g. switching to MIT or GPL later).
+- The repo is **public, but not open source**. `LICENSE` says *all rights reserved*: people can read the code, but not copy it, change it or reuse it without permission. GitHub's terms still let others view and fork public repos on GitHub.
 - **Never commit** game files or game code. Reference copies stay in the gitignored `refs/` folder.
 
-## 15. Open questions
+## 15. Names
 
-- **Name:** decided 2026-11-20: **Bingo the Spire** (repo `bingo-the-spire`, mod id `BingoTheSpire`, which must never change after release).
-- **Keeping a main install around for testing:** Steam only installs one branch at a time. Options: switch branches for each test session, or keep a copy of the game folder for the other branch. (Reference copies for both branches are already in `refs/`.)
+- **Bingo the Spire**: repo `bingo-the-spire`, mod id `BingoTheSpire`. The id must never change (section 10).
 
 ## 16. Later ideas
 
@@ -394,5 +371,8 @@ The `id` must not change after release: the game uses it for its settings and co
   1. **Hand-picked boards from built-in goals.** Still fully checked by the game. The board code lists goal IDs instead of a seed.
   2. **Built-in goal templates with your own numbers** (e.g. "Gain {N} Block"). Still fully checked.
   3. **Free-text goals.** These become **squares you mark yourself**, clearly labeled, and any board with them is marked *Custom* in history and kept out of personal bests.
-- **Blackout** (with a check that the whole board can be completed in one run) and solo **Score** mode, after v1, once there's player feedback.
-- Board size and difficulty options; a "daily bingo" board code from the date; a web spectator view or OBS overlay; a community goal-list editor.
+- **Blackout** (with a check that the whole board can be completed in one run) and solo **Score** mode.
+- An **Extreme** difficulty (a difficulty 5 square in every line) and board size options.
+- Spotting squares that can no longer be done this run, so Lockout clinches are called sooner (section 4.3.1).
+- Board notes reachable with a controller, so their details don't need a mouse hover; settings reachable during a run.
+- A "daily bingo" board code from the date; a web spectator view or OBS overlay; a community goal-list editor.

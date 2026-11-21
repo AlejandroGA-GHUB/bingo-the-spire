@@ -5,7 +5,6 @@ Guidance for AI agents working on this repo.
 ## Source of truth
 - **`docs/design-spec.md` is the design.** Read the relevant section before changing behavior. If a change departs from the spec, update the spec in the same commit, or ask first.
 - **Notes on the game's internals live in `notes/game-internals.md`, which is local and gitignored.** Read it before working on the game adapter, and add to it when you discover something. The public repo holds only project code and docs about how the mod works, so never move these notes into `docs/` or commit them.
-- `docs/archive/` is history only. Don't follow it where it disagrees with the spec.
 
 ## Architecture rules (do not break)
 1. **`BingoTheSpire.Core` has no game references.** No `sts2.dll`, Godot or Harmony types. Everything in Core must be testable with plain `dotnet test`.
@@ -38,6 +37,3 @@ Game path: `GameDir` in `Directory.Build.props`, overridden by the gitignored `l
 - Decompile with `ilspycmd` into a temporary or scratch folder, never inside the repo.
 - `sts2.xml` next to `sts2.dll` has the game's own documentation comments for many types.
 - The game is Godot 4.5.1 + .NET 9 + Harmony 2.4.2.
-
-## Commits
-Follow the user's `commit-rules` skill: small, frequent commits written as `type(scope): summary`, with no AI attribution trailers. Push only when asked.
