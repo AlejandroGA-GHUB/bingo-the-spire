@@ -184,7 +184,7 @@ public sealed record PotionDiscarded(ulong PlayerId, string PotionId) : GameEven
 /// <param name="ItemKind">Kind of shop entry (card, relic, potion, removal, …).</param>
 public sealed record ItemPurchased(ulong PlayerId, string ItemKind, int Gold) : GameEvent;
 
-/// <param name="Gold">Gold total after the gain.</param>
+/// <param name="Gold">Gold total now: after a gain, or as checked when entering a room (the game can't report losses).</param>
 public sealed record GoldGained(ulong PlayerId, int Gold) : GameEvent;
 
 public sealed record RestHealed(ulong PlayerId) : GameEvent;

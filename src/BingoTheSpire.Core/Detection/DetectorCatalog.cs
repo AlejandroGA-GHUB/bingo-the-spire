@@ -86,7 +86,7 @@ public static class DetectorCatalog
             n => $"overkilled by {n}"),
         ["CardCost"] = Threshold([nameof(CardPlayed)],
             (e, _) => e is CardPlayed c ? One(c.PlayerId, c.EnergySpent) : null, n => $"played a {n}-energy card"),
-        ["GoldHeld"] = new([nameof(GoldGained)], (p, pooled) => new GoldHeldDetector(N(p), pooled), Lasting: true, Pools: true),
+        ["GoldHeld"] = new([nameof(GoldGained), nameof(ItemPurchased)], (p, pooled) => new GoldHeldDetector(N(p), pooled), Lasting: true, Pools: true),
         ["SurviveHit"] = Threshold([nameof(DamageDealt)],
             (e, _) => e is DamageDealt { TargetKind: CreatureKind.Player, TargetPlayerId: { } p, TargetDied: false } d ? One(p, d.Unblocked) : null,
             n => $"survived a hit for {n} HP"),
@@ -101,11 +101,11 @@ public static class DetectorCatalog
 
         // ---- Their own logic ----------------------------------------------------------------
         ["FlawlessElite"] = new([nameof(HpChanged), nameof(CombatWon), nameof(CombatStarting)],
-            (_, _) => new FlawlessWinsDetector(new HashSet<string> { "Elite" }, 1, "an elite")),
+            (_, pooled) => new FlawlessWinsDetector(new HashSet<string> { "Elite" }, 1, "an elite", pooled), Pools: true),
         ["FlawlessBoss"] = new([nameof(HpChanged), nameof(CombatWon), nameof(CombatStarting)],
-            (_, _) => new FlawlessWinsDetector(new HashSet<string> { "Boss" }, 1, "a boss")),
+            (_, pooled) => new FlawlessWinsDetector(new HashSet<string> { "Boss" }, 1, "a boss", pooled), Pools: true),
         ["FlawlessHallways"] = new([nameof(HpChanged), nameof(CombatWon), nameof(CombatStarting)],
-            (p, _) => new FlawlessWinsDetector(new HashSet<string> { "Monster" }, N(p), "normal"), Lasting: true),
+            (p, pooled) => new FlawlessWinsDetector(new HashSet<string> { "Monster" }, N(p), "normal", pooled), Lasting: true, Pools: true),
         ["QuickWin"] = new([nameof(CombatWon), nameof(CombatStarting)], (p, _) => new QuickWinDetector(N(p))),
         ["LowHpWin"] = new([nameof(HpChanged), nameof(CombatWon)], (p, _) => new LowHpWinDetector(N(p))),
         ["CardHits"] = new([nameof(DamageDealt), nameof(CardPlayed)], (p, _) => new CardHitsDetector(N(p))),

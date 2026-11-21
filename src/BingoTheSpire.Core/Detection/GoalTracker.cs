@@ -16,6 +16,7 @@ public sealed class GoalTracker
 
     public GoalTracker(BingoBoard board, GoalList goals, Action<string, Exception>? onDetectorError = null)
     {
+        Team = board.Mode == BingoMode.Team;
         var byId = goals.Goals.ToDictionary(g => g.Id, StringComparer.Ordinal);
         _squares = board.Squares.Select(square =>
         {
@@ -23,7 +24,7 @@ public sealed class GoalTracker
             {
                 throw new InvalidOperationException($"goal '{square.GoalId}' is not in goal list v{goals.Version}");
             }
-            var detector = DetectorCatalog.Create(goal.Detector, square.Params, team: board.Mode == BingoMode.Team);
+            var detector = DetectorCatalog.Create(goal.Detector, square.Params, team: Team);
             return new Square(this, square.Index, goal.Id, detector, DetectorCatalog.Lasting(goal.Detector));
         }).ToArray();
         OnDetectorError = onDetectorError;
@@ -34,6 +35,9 @@ public sealed class GoalTracker
     public event Action<GoalProgress>? Progressed;
 
     public DetectionContext Context => _context;
+
+    /// <summary>Team mode: the board shows the team's progress, the best any player has, to everyone.</summary>
+    public bool Team { get; }
 
     private Action<string, Exception>? OnDetectorError { get; }
 
@@ -74,7 +78,7 @@ public sealed class GoalTracker
         {
             foreach (var square in _squares.Where(s => !s.Lasting))
             {
-                foreach (var (player, progress) in square.LastProgress.ToList())
+                foreach (var (player, progress) in square.Reported.ToList())
                 {
                     if (progress.Current > 0)
                     {
@@ -87,6 +91,9 @@ public sealed class GoalTracker
 
     private sealed class Square(GoalTracker tracker, int index, string goalId, IDetector detector, bool lasting) : IDetectionSink
     {
+        /// <summary>What the detector last reported for each player.</summary>
+        public Dictionary<ulong, (int Current, int Target)> Reported { get; } = new();
+
         /// <summary>Progress builds up over the run, so it stays shown between fights.</summary>
         public bool Lasting { get; } = lasting;
 
@@ -112,6 +119,22 @@ public sealed class GoalTracker
         }
 
         public void Progress(ulong playerId, int current, int target)
+        {
+            Reported[playerId] = (current, target);
+            if (!tracker.Team)
+            {
+                Show(playerId, current, target);
+                return;
+            }
+            // Team: everyone sees the best anyone has, e.g. a teammate's 4/10 shows on your board too.
+            var best = Reported.Values.Max(p => p.Current);
+            foreach (var player in tracker.Context.Players.Union(Reported.Keys))
+            {
+                Show(player, best, target);
+            }
+        }
+
+        private void Show(ulong playerId, int current, int target)
         {
             if (Done.Contains(playerId)
                 || (LastProgress.TryGetValue(playerId, out var last) && last == (current, target)))

@@ -427,6 +427,22 @@ public class DetectorTests
     }
 
     [Fact]
+    public void GoldHeld_ProgressShowsGoldNow_NotThePeak()
+    {
+        var script = new Script(BingoMode.Team, "GoldHeld", 1000, Alex, Sam)
+            .Send(new GoldGained(Alex, 400))
+            .Send(new GoldGained(Sam, 276));
+        Assert.Equal(676, script.Progress[Alex]);
+
+        // A shop trip, then a room check after an event took some gold.
+        script.Send(new ItemPurchased(Sam, "Card", 150));
+        Assert.Equal(526, script.Progress[Alex]);
+        script.Send(new GoldGained(Alex, 300));
+        Assert.Equal(426, script.Progress[Sam]);
+        Assert.Empty(script.Completions);
+    }
+
+    [Fact]
     public void Team_DebuffStacks_AddUpOnTheSameEnemy()
     {
         var script = new Script(BingoMode.Team, "PoisonStacks", 10, Alex, Sam).Fight()
@@ -442,6 +458,7 @@ public class DetectorTests
     [InlineData(2, 2, 4)]
     [InlineData(1, 2, 2)]
     [InlineData(4, 3, 10)]
+    [InlineData(10, 2, 18)]
     public void TeamTarget_AddsThreeQuartersPerExtraPlayer_RoundedClean(int solo, int players, int expected) =>
         Assert.Equal(expected, BoardBuilder.TeamTarget(solo, players));
 
@@ -465,6 +482,41 @@ public class DetectorTests
                 Assert.Equal(solo.Params, team.Params);
             }
         }
+    }
+
+    [Fact]
+    public void Team_FlawlessFights_EachCleanPlayerAddsOne_AndBothSeeIt()
+    {
+        var script = new Script(BingoMode.Team, "FlawlessHallways", 10, Alex, Sam);
+
+        // Both stay clean: the fight counts twice.
+        script.Fight().Win();
+        Assert.Equal(2, script.Progress[Alex]);
+        Assert.Equal(2, script.Progress[Sam]);
+
+        // Only Sam stays clean: one more, and Alex still sees the team's count.
+        script.Fight().Hp(Alex, -6, 74).Win();
+        Assert.Equal(3, script.Progress[Alex]);
+        Assert.Equal(3, script.Progress[Sam]);
+    }
+
+    [Fact]
+    public void Team_OneMomentGoals_ShowTheTeamsBestToEveryone()
+    {
+        var script = new Script(BingoMode.Team, "SurviveHit", 10, Alex, Sam).Fight()
+            .Send(new DamageDealt(null, CreatureKind.Enemy, CreatureKind.Player, Sam, null, 0, 4, 0, 0, false, null))
+            .Send(new DamageDealt(null, CreatureKind.Enemy, CreatureKind.Player, Alex, null, 0, 2, 0, 0, false, null));
+        Assert.Equal(4, script.Progress[Alex]);
+        Assert.Equal(4, script.Progress[Sam]);
+        Assert.Empty(script.Completions);
+    }
+
+    [Fact]
+    public void Versus_ProgressStaysPersonal()
+    {
+        var script = new Script("SurviveHit", 10, Alex, Sam).Fight()
+            .Send(new DamageDealt(null, CreatureKind.Enemy, CreatureKind.Player, Sam, null, 0, 4, 0, 0, false, null));
+        Assert.False(script.Progress.ContainsKey(Alex));
     }
 
     // ---- Kills by Poison and Doom --------------------------------------------------------------

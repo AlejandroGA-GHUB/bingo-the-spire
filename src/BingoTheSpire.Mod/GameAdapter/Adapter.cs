@@ -253,6 +253,12 @@ internal static class Adapter
     {
         _inCombat = false;
         Publish(new RoomEntered(room.RoomType.ToString(), room.ModelId?.Entry));
+        // The game has no hook for losing gold outside shops (events, thieves), so check everyone's
+        // gold at each new room to keep "gold held" honest.
+        foreach (var player in _run?.Players ?? [])
+        {
+            Publish(new GoldGained(player.NetId, player.Gold));
+        }
     }
 
     public static void OnCombatStarting()

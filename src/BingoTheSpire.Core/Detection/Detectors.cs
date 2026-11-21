@@ -115,10 +115,13 @@ public sealed class ThresholdDetector(
 /// "Have {n}+ gold at once". Pooled, it's the team's gold added together. The game only reports
 /// gold going up, so shop spending is taken off by hand; other losses are missed until the next gain.
 /// </summary>
+/// <summary>
+/// "Have {n}+ gold at once". Progress shows the gold held right now (pooled: the team's total),
+/// so it goes down when gold is spent.
+/// </summary>
 public sealed class GoldHeldDetector(int target, bool pooled = false) : IDetector
 {
     private readonly Dictionary<ulong, int> _gold = new();
-    private readonly Dictionary<ulong, int> _best = new();
 
     public void Handle(GameEvent evt, DetectionContext context, IDetectionSink sink)
     {
@@ -130,6 +133,7 @@ public sealed class GoldHeldDetector(int target, bool pooled = false) : IDetecto
                 break;
             case ItemPurchased { Gold: > 0 } i:
                 _gold[i.PlayerId] = Math.Max(0, _gold.GetValueOrDefault(i.PlayerId) - i.Gold);
+                Check(i.PlayerId, context, sink);
                 break;
         }
     }
@@ -138,13 +142,9 @@ public sealed class GoldHeldDetector(int target, bool pooled = false) : IDetecto
     {
         var who = pooled ? Pool.Team : actor;
         var held = pooled ? _gold.Values.Sum() : _gold[actor];
-        if (held > _best.GetValueOrDefault(who))
+        foreach (var player in Pool.Members(context, who, actor))
         {
-            _best[who] = held;
-            foreach (var player in Pool.Members(context, who, actor))
-            {
-                sink.Progress(player, Math.Min(held, target), target);
-            }
+            sink.Progress(player, Math.Min(held, target), target);
         }
         if (held >= target)
         {
@@ -155,9 +155,10 @@ public sealed class GoldHeldDetector(int target, bool pooled = false) : IDetecto
 
 /// <summary>
 /// "Win {n} fights of these room types without losing HP". A player is clean in a combat until
-/// their HP goes down; HP lost to their own cards counts too.
+/// their HP goes down; HP lost to their own cards counts too. Pooled (Team), every clean player
+/// adds one to the team's count, so a fight where both players stay clean counts twice.
 /// </summary>
-public sealed class FlawlessWinsDetector(IReadOnlySet<string> roomTypes, int target, string what) : IDetector
+public sealed class FlawlessWinsDetector(IReadOnlySet<string> roomTypes, int target, string what, bool pooled = false) : IDetector
 {
     private readonly HashSet<ulong> _hurt = [];
     private readonly Dictionary<ulong, int> _wins = new();
@@ -175,12 +176,17 @@ public sealed class FlawlessWinsDetector(IReadOnlySet<string> roomTypes, int tar
             case CombatWon won when roomTypes.Contains(won.RoomType):
                 foreach (var player in context.Players.Where(p => !_hurt.Contains(p)))
                 {
-                    var wins = _wins.GetValueOrDefault(player) + 1;
-                    _wins[player] = wins;
-                    sink.Progress(player, Math.Min(wins, target), target);
+                    var who = pooled ? Pool.Team : player;
+                    var wins = _wins.GetValueOrDefault(who) + 1;
+                    _wins[who] = wins;
+                    foreach (var member in Pool.Members(context, who, player))
+                    {
+                        sink.Progress(member, Math.Min(wins, target), target);
+                    }
                     if (wins >= target)
                     {
-                        sink.Complete(player, target == 1 ? $"{what} without losing HP" : $"{wins} {what} fights without losing HP");
+                        var evidence = target == 1 ? $"{what} without losing HP" : $"{wins} {what} fights without losing HP";
+                        sink.Complete(player, Pool.Evidence(pooled && target > 1, evidence));
                     }
                 }
                 break;

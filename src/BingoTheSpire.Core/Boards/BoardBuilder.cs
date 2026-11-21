@@ -131,14 +131,14 @@ public static class BoardBuilder
         return new Dictionary<string, int>(parameters) { ["n"] = TeamTarget(n, players) };
     }
 
-    /// <summary>A solo target scaled for a team: 5 → 9, 20 → 35, 400 → 700 for two players.</summary>
+    /// <summary>A solo target scaled for a team: 5 → 9, 10 → 18, 20 → 35, 400 → 700 for two players.</summary>
     public static int TeamTarget(int solo, int players)
     {
         // Decimal maths, so every game rounds the same way.
         var scaled = (decimal)solo * (4 + 3 * (players - 1)) / 4;
         var step = scaled switch
         {
-            < 10 => 1m,
+            < 20 => 1m,
             < 50 => 5m,
             < 200 => 10m,
             < 1000 => 25m,
