@@ -299,12 +299,12 @@ internal sealed class LobbyPanel
 
     private static Button OnOffButton(string text, bool editable)
     {
-        var button = new Button
+        var button = BingoFonts.Keep(new Button
         {
             Text = text,
             FocusMode = Control.FocusModeEnum.None,
             CustomMinimumSize = new Vector2(96, 46),
-        };
+        });
         button.AddThemeFontOverride("font", BingoFonts.Heading);
         button.AddThemeFontSizeOverride("font_size", 19);
         return button;
@@ -340,7 +340,7 @@ internal sealed class LobbyPanel
 
     private static LineEdit SeedBox(bool editable)
     {
-        var box = new LineEdit
+        var box = BingoFonts.Keep(new LineEdit
         {
             PlaceholderText = "Empty: board from the run's seed",
             MaxLength = 48,
@@ -348,7 +348,7 @@ internal sealed class LobbyPanel
             CustomMinimumSize = new Vector2(ColumnWidth, 40),
             CaretBlink = true,
             MouseDefaultCursorShape = Control.CursorShape.Arrow, // the game only draws its own cursor for the arrow
-        };
+        });
         var line = new StyleBoxFlat { BgColor = new Color(0, 0, 0, 0.02f), BorderColor = BingoStyle.Unpicked, BorderWidthBottom = 2 };
         line.ContentMarginLeft = line.ContentMarginRight = 4;
         line.ContentMarginTop = line.ContentMarginBottom = 4;

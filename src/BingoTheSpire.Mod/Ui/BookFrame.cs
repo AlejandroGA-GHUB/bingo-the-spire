@@ -49,13 +49,13 @@ internal sealed class BookFrame
         Book.AddChild(Content);
         Content.MinimumSizeChanged += QueueLayout;
 
-        _close = new Button
+        _close = BingoFonts.Keep(new Button
         {
             Text = "✕",
             FocusMode = Control.FocusModeEnum.None,
             TooltipText = "Close",
             Size = new Vector2(46, 46),
-                    };
+                    });
         _close.AddThemeFontOverride("font", BingoFonts.NoteBold);
         _close.AddThemeFontSizeOverride("font_size", 22);
         foreach (var (state, color) in new[] { ("normal", BingoStyle.Brass), ("hover", BingoStyle.Brass.Lightened(0.15f)), ("pressed", BingoStyle.Brass.Darkened(0.1f)) })

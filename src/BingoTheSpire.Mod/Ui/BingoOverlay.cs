@@ -48,6 +48,11 @@ internal sealed class BingoOverlay
         {
             viewport.SizeChanged -= PlaceIcon;
             Unbind();
+            // The icon may live in the game's top bar rather than our layer.
+            if (GodotObject.IsInstanceValid(_icon.Root) && !_layer.IsAncestorOf(_icon.Root))
+            {
+                _icon.Root.QueueFree();
+            }
         };
     }
 
@@ -170,9 +175,31 @@ internal sealed class BingoOverlay
 
     private void PlaceIcon()
     {
-        if (GodotObject.IsInstanceValid(_layer))
+        if (GodotObject.IsInstanceValid(_layer) && GodotObject.IsInstanceValid(_icon.Root))
         {
+            MoveIconIntoTopBar();
             _icon.Place();
+        }
+    }
+
+    /// <summary>
+    /// Puts the icon in the game's top bar, so it sits on the same layer as the game's own top bar
+    /// buttons: screens and menus the game opens over the top bar cover it too. It stays in our
+    /// layer if the top bar can't be found.
+    /// </summary>
+    private void MoveIconIntoTopBar()
+    {
+        try
+        {
+            if (MegaCrit.Sts2.Core.Nodes.NRun.Instance?.GlobalUi?.TopBar is { } topBar
+                && GodotObject.IsInstanceValid(topBar) && _icon.Root.GetParent() != topBar)
+            {
+                _icon.Root.Reparent(topBar, keepGlobalTransform: false);
+            }
+        }
+        catch (Exception ex)
+        {
+            BingoLog.Error($"couldn't put the bingo icon in the top bar, keeping it on top: {ex.Message}");
         }
     }
 

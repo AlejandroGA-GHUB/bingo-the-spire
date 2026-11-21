@@ -64,7 +64,7 @@ internal static class BingoStyle
     /// <summary>A label with the game's chunky outlined look (for text over the game, like toasts).</summary>
     public static Label Text(string text, int size, Color? color = null, int outline = 6, Font? font = null)
     {
-        var label = new Label { Text = text };
+        var label = BingoFonts.Keep(new Label { Text = text });
         label.AddThemeFontOverride("font", font ?? BingoFonts.NoteBold);
         label.AddThemeFontSizeOverride("font_size", size);
         label.AddThemeColorOverride("font_color", color ?? Colors.White);
@@ -76,7 +76,7 @@ internal static class BingoStyle
     /// <summary>Ink on paper: no outline.</summary>
     public static Label Ink(string text, Font font, int size, Color color)
     {
-        var label = new Label { Text = text, MouseFilter = Control.MouseFilterEnum.Ignore };
+        var label = BingoFonts.Keep(new Label { Text = text, MouseFilter = Control.MouseFilterEnum.Ignore });
         label.AddThemeFontOverride("font", font);
         label.AddThemeFontSizeOverride("font_size", size);
         label.AddThemeColorOverride("font_color", color);

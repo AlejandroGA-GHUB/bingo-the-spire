@@ -70,7 +70,7 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 
 ### 4.2 Solo
 - One board. Squares fill as you complete goals: a toast appears and the square pulses.
-- **Win: the first line** (row, column or diagonal) gets a small "BINGO!" that pops in at the top of the screen and floats away; every later line gets the same. The board marks the line itself with a marker stroke drawn through its notes (animated the next time the board is open, if it was closed). After that, the board stays active: **the 2nd, 3rd and later lines are tracked**, with the floor and run time for each.
+- **Win: the first line** (row, column or diagonal) gets the BINGO! pop-up at the top of the screen: a white box with a drifting grey checkerboard, the letters stamping down one by one, then stars popping around it while the letters bob in a wave, before it floats away. Every later line gets the same. The board marks the line itself with a yellow highlighter swipe through its notes, which keeps the text readable (animated the next time the board is open, if it was closed). After that, the board stays active: **the 2nd, 3rd and later lines are tracked**, with the floor and run time for each.
 - When the run ends (win or death), the bingo results are recorded. Winning the run and winning the bingo are separate results.
 
 ### 4.3 Co-op: three modes, chosen by the host
@@ -114,11 +114,11 @@ Rules for every mode:
 
 ### 4.4 In-run UI
 
-- **Bingo button + hotkey** opens the full board. The button is always there and works with mouse and controller.
+- **Bingo button + hotkey** opens the full board. The button is always there and works with mouse and controller. It lives in the game's top bar, so screens and menus the game opens over the top bar cover it like the game's own buttons.
   - The hotkey defaults to `B`, but **only if no other binding (the game's or another mod's) already uses that key**. If it does, the hotkey starts off and the log says why.
   - Players can set their own key, or turn the hotkey off, in the bingo settings.
 - **Look:** the board and the Bingo panel are an **open book** with curved pages, drawn in code so they're sharp at any resolution. Each square is a **paper note** taped to the page, with its difficulty as a colored corner. Headings use Mochiy Pop One and notes use Mali (both SIL OFL, embedded in the mod).
-- **Your board:** 5×5 grid of notes showing each goal's text, a **DONE** stamp on filled squares (gold when part of a finished line), and **progress on goals in progress** (e.g. "7/10 cards this turn", "Block 38/50"). A brass nameplate shows the score, "Board: code" and the mode ("Solo" in a one-player run, which plays by Versus rules); the difficulty key runs along the bottom of the page.
+- **Your board:** 5×5 grid of notes showing each goal's text, a **DONE** stamp on filled squares (gold when part of a finished line), and **progress on goals in progress** (e.g. "7/10 cards this turn", "Block 38/50"). A brass nameplate (a cream "BINGO!" with a thick near-black outline) shows the score, "Board: code" and the mode ("Solo" in a one-player run, which plays by Versus rules); the difficulty key runs along the bottom of the page.
   - **Versus:** only your own squares. **Lockout:** squares someone else took are greyed out with "Taken by Sam". **Team:** every filled square is just DONE, whoever filled it.
   - **Progress only shows while it can still count.** Turn, fight and one-moment goals show it during the fight and clear when the fight ends. Goals that build over the run (rest sites, potions used, cards removed, relics bought, elites, exact kills, gold held, flawless normal fights) keep their bars.
   - Long goal text shrinks to fit its note.
@@ -127,7 +127,8 @@ Rules for every mode:
 - **The game's own cursor** stays on screen over the bingo UI: no hand or text cursors, since the game only draws its own arrow.
 - **"One away" marker:** shown when any player (you or a teammate) needs one more square for a line.
 - **Activity feed:** "Sam completed *50+ Block* (floor 22)", "BINGO: Alex (floor 18)", and so on.
-- **Toasts** for your own completions and important events (a teammate's bingo, a locked square you were working on).
+- **Toasts** for your own completions and important events (a teammate's bingo, a locked square you were working on). A finished square shows a green card with a white "SQUARE COMPLETE!" label sitting on its top edge.
+- **Fonts stay ours** when another mod swaps the game's fonts: our text controls carry the marker CznStyleUI checks to leave a control alone.
 - **Mini-board** that can be pinned in a corner: about 120 px, colors only, hover a cell to see its goal.
 - **Results** after the game's own run summary: final board(s), lines and their floors and times, placements, and the board code.
 - **Settings:** hotkey (any key, or off), mini-board corner, colorblind-safe player colors.

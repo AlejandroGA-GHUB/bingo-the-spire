@@ -2,7 +2,7 @@ using Godot;
 
 namespace BingoTheSpire.Mod.Ui;
 
-/// <summary>Pop-ups at the top of the screen: a green card for a square, a bouncing BINGO! word for a line.</summary>
+/// <summary>Pop-ups at the top of the screen: a green card for a square, the BINGO! pop-up for a line.</summary>
 internal sealed class Toasts
 {
     private readonly VBoxContainer _stack;
@@ -18,52 +18,53 @@ internal sealed class Toasts
         parent.AddChild(_stack);
     }
 
+    /// <summary>A square was filled: a green card with a white "SQUARE COMPLETE!" label on its top edge.</summary>
     public void Square(string goal, string evidence)
     {
-        var card = Card(new Color(0.08f, 0.32f, 0.17f, 0.97f), BingoStyle.FilledBorder, BingoStyle.FilledGlow, 18);
+        // The label overlaps the card's top edge, drawn on top of it.
+        var toast = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        toast.AddThemeConstantOverride("separation", -TabOverlap);
+        _stack.AddChild(toast);
+
+        var tab = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore, ZIndex = 1, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
+        tab.AddThemeStyleboxOverride("panel", TabStyle);
+        tab.AddChild(BingoStyle.Ink("SQUARE COMPLETE!", BingoFonts.Heading, 22, TabInk));
+        toast.AddChild(tab);
+
+        var card = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        var box = BingoStyle.Box(new Color(0.08f, 0.32f, 0.17f, 0.97f), 14, 3, BingoStyle.FilledBorder, 16, BingoStyle.FilledGlow, 18);
+        box.ContentMarginTop = 16 + TabOverlap;
+        card.AddThemeStyleboxOverride("panel", box);
+        toast.AddChild(card);
+
         var column = Column(card);
-        column.AddChild(Centered(BingoStyle.Text("SQUARE COMPLETE", 16, BingoStyle.Gold, outline: 5, font: BingoFonts.Heading)));
         column.AddChild(Centered(BingoStyle.Text(goal, 24, Colors.White, outline: 7), wrap: true));
         if (evidence.Length > 0)
         {
             column.AddChild(Centered(BingoStyle.Text(evidence, 15, BingoStyle.Muted, outline: 4)));
         }
-        Show(card, hold: 3.0, popFrom: 0.7f);
+        Show(toast, hold: 3.0, popFrom: 0.7f);
     }
 
-    /// <summary>
-    /// A line was made: just the word BINGO!, popping in with a little bounce and floating away.
-    /// The board shows which line with a marker stroke.
-    /// </summary>
-    public void Bingo()
+    private const int TabOverlap = 18;
+    private static readonly Color TabInk = Color.FromHtml("#111111");
+    private static readonly StyleBoxFlat TabStyle = MakeTabStyle();
+
+    private static StyleBoxFlat MakeTabStyle()
     {
-        // The word moves freely inside a fixed slot, because the stack resets its children's scale.
-        var slot = new Control { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(0, 64) };
-        _stack.AddChild(slot);
-        var word = BingoStyle.Text("BINGO!", 44, BingoStyle.Gold, outline: 10, font: BingoFonts.Heading);
-        word.HorizontalAlignment = HorizontalAlignment.Center;
-        word.VerticalAlignment = VerticalAlignment.Center;
-        word.MouseFilter = Control.MouseFilterEnum.Ignore;
-        word.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        word.AddThemeColorOverride("font_outline_color", Color.FromHtml("#5a3510"));
-        slot.AddChild(word);
-        BingoStyle.CenterPivot(word);
-
-        word.Scale = new Vector2(0.3f, 0.3f);
-        word.Rotation = -0.12f;
-        word.Modulate = new Color(1, 1, 1, 0);
-        var tween = word.CreateTween();
-        tween.SetParallel();
-        tween.TweenProperty(word, "scale", Vector2.One, 0.4).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
-        tween.TweenProperty(word, "modulate:a", 1.0, 0.15);
-        tween.TweenProperty(word, "rotation", 0.0, 0.5).SetTrans(Tween.TransitionType.Elastic).SetEase(Tween.EaseType.Out);
-        tween.Chain().TweenProperty(word, "scale", new Vector2(1.08f, 1.08f), 0.12).SetTrans(Tween.TransitionType.Quad);
-        tween.Chain().TweenProperty(word, "scale", Vector2.One, 0.18).SetTrans(Tween.TransitionType.Quad);
-        tween.Chain().TweenInterval(1.4);
-        tween.Chain().TweenProperty(word, "position:y", -18.0, 0.45).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
-        tween.TweenProperty(word, "modulate:a", 0.0, 0.45);
-        tween.Chain().TweenCallback(Callable.From(slot.QueueFree));
+        var box = BingoStyle.Box(Colors.White, 12, 4, TabInk, 0);
+        box.ContentMarginLeft = box.ContentMarginRight = 16;
+        box.ContentMarginTop = 3;
+        box.ContentMarginBottom = 5;
+        box.ShadowColor = TabInk;
+        box.ShadowSize = 1;
+        box.ShadowOffset = new Vector2(0, 4);
+        box.AntiAliasing = true;
+        return box;
     }
+
+    /// <summary>A line was made: the BINGO! pop-up (see <see cref="BingoPop"/>). The board marks which line.</summary>
+    public void Bingo() => BingoPop.Play(_stack);
 
     /// <summary>Accent for other players' moves in Lockout.</summary>
     public static readonly Color Rival = new(0.95f, 0.42f, 0.5f);
@@ -106,7 +107,7 @@ internal sealed class Toasts
         return label;
     }
 
-    private static void Show(PanelContainer card, double hold, float popFrom)
+    private static void Show(Control card, double hold, float popFrom)
     {
         BingoStyle.CenterPivot(card);
         card.Scale = new Vector2(popFrom, popFrom);

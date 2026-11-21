@@ -49,6 +49,17 @@ internal static class BingoFonts
         return theme;
     }
 
+    /// <summary>
+    /// Keeps our fonts on a text control when a font-replacing mod is installed. CznStyleUI swaps
+    /// the font on every text control that enters the tree unless it carries this marker. Has to be
+    /// set before the control is added to the tree.
+    /// </summary>
+    public static T Keep<T>(T control) where T : Control
+    {
+        control.SetMeta("czn_hud_numeric_font", true);
+        return control;
+    }
+
     private static Font Load(string file)
     {
         var fallback = GameFont();

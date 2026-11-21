@@ -118,7 +118,7 @@ internal sealed class BoardPanel
         var gridLayers = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         content.AddChild(gridLayers);
         gridLayers.AddChild(_grid);
-        _strikes = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
+        _strikes = new Control { MouseFilter = Control.MouseFilterEnum.Ignore, Material = HighlighterMaterial };
         _strikes.Draw += DrawStrikes;
         gridLayers.AddChild(_strikes);
         foreach (var square in board.Squares)
@@ -172,7 +172,7 @@ internal sealed class BoardPanel
         }
     }
 
-    /// <summary>Draws the marker stroke through a finished line, left to right.</summary>
+    /// <summary>Swipes the highlighter through a finished line, from its first square to its last.</summary>
     private void Strike(int line, double delay)
     {
         if (_strikes == null || !_striking.Add(line))
@@ -186,13 +186,32 @@ internal sealed class BoardPanel
         {
             _struck[line] = t;
             strikes.QueueRedraw();
-        }), 0f, 1f, 0.55).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        }), 0f, 1f, 0.52).SetTrans(Tween.TransitionType.Quart).SetEase(Tween.EaseType.Out);
         tween.TweenCallback(Callable.From(() => _striking.Remove(line)));
     }
 
-    private static readonly Color StrikeInk = BingoStyle.RedInk with { A = 0.7f };
+    private static readonly Color HighlighterInk = Color.FromHtml("#ffd54a");
+    private const float HighlighterWidth = 32;
 
-    /// <summary>A slightly wobbly marker line through the middle of every note in each finished line.</summary>
+    /// <summary>
+    /// Multiplies the strokes into what's under them, like a real highlighter: the note text stays
+    /// dark and the paper turns yellow. Soft edges fade to white first, so they blend in too.
+    /// </summary>
+    private static readonly ShaderMaterial HighlighterMaterial = new()
+    {
+        Shader = new Shader
+        {
+            Code = """
+                shader_type canvas_item;
+                render_mode blend_mul;
+                void fragment() {
+                    COLOR = vec4(mix(vec3(1.0), COLOR.rgb, COLOR.a), 1.0);
+                }
+                """,
+        },
+    };
+
+    /// <summary>A highlighter swipe along each finished line, with a gentle wave.</summary>
     private void DrawStrikes()
     {
         if (_strikes == null || _cells.Count == 0)
@@ -206,12 +225,15 @@ internal sealed class BoardPanel
                 continue;
             }
             var cells = BoardRules.Lines(_size)[line];
-            Vector2 Center(int index) => _cells[index].Note.Slot.Position + _cells[index].Note.Slot.Size / 2;
-            var start = Center(cells[0]);
-            var end = Center(cells[^1]);
+            var first = _cells[cells[0]].Note.Slot;
+            var last = _cells[cells[^1]].Note.Slot;
+            var start = first.Position + first.Size / 2;
+            var end = last.Position + last.Size / 2;
             var direction = (end - start).Normalized();
-            start -= direction * 70;
-            end += direction * 70;
+            // Reach most of the way across the end notes, whichever way the line runs.
+            var reach = 0.42f * (Math.Abs(direction.X) * first.Size.X + Math.Abs(direction.Y) * first.Size.Y) + 6;
+            start -= direction * reach;
+            end += direction * reach;
             var across = new Vector2(-direction.Y, direction.X);
 
             const int steps = 48;
@@ -220,10 +242,10 @@ internal sealed class BoardPanel
             for (var i = 0; i < count; i++)
             {
                 var t = Math.Min(drawn, (float)i / steps);
-                var wobble = MathF.Sin(t * 9f + line * 1.7f) * 1.8f;
-                points[i] = start + (end - start) * t + across * wobble;
+                var wave = MathF.Sin(t * 7f + 1f + line) * 4f;
+                points[i] = start + (end - start) * t + across * wave;
             }
-            _strikes.DrawPolyline(points, StrikeInk, 9, antialiased: true);
+            _strikes.DrawPolyline(points, HighlighterInk with { A = 0.55f }, HighlighterWidth, antialiased: true);
         }
     }
 
@@ -280,11 +302,15 @@ internal sealed class BoardPanel
         var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 20);
         plate.AddChild(row);
-        var heading = BingoStyle.Ink(title, BingoFonts.Heading, 40, BingoStyle.Cream);
-        heading.AddThemeColorOverride("font_shadow_color", Color.FromHtml("#6b4512"));
+        // Cream letters with a thick near-black outline and a hard drop shadow.
+        var ink = Color.FromHtml("#1c1611");
+        var heading = BingoStyle.Ink(title, BingoFonts.Heading, 46, BingoStyle.Cream);
+        heading.AddThemeColorOverride("font_outline_color", ink);
+        heading.AddThemeConstantOverride("outline_size", 9);
+        heading.AddThemeColorOverride("font_shadow_color", ink);
         heading.AddThemeConstantOverride("shadow_offset_x", 0);
-        heading.AddThemeConstantOverride("shadow_offset_y", 3);
-        heading.AddThemeConstantOverride("shadow_outline_size", 2);
+        heading.AddThemeConstantOverride("shadow_offset_y", 4);
+        heading.AddThemeConstantOverride("shadow_outline_size", 9);
         heading.VerticalAlignment = VerticalAlignment.Center;
         row.AddChild(heading);
         if (info != null)
