@@ -99,6 +99,9 @@ internal sealed class BookFrame
 
     public bool Visible => Root.Visible;
 
+    /// <summary>True while a book with a backdrop (lobby, settings, results, history) is open on top.</summary>
+    public static bool AnyBackdropOpen => OpenBooks.Any(b => GodotObject.IsInstanceValid(b.Root) && b.Root.Visible);
+
     /// <summary>Page insets for this book's width: content placed with these clears the curves.</summary>
     public (float Side, float Top, float Bottom) Insets => BookArt.Insets(BookArt.WidthFor(_contentWidth));
 

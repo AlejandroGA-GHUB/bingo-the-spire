@@ -19,8 +19,18 @@ internal sealed class BoardPanel
     private readonly HashSet<int> _fresh = [];
     private BookFrame? _book;
     private Label? _stats;
+    private PanelContainer? _whoTag;
+    private Label? _whoLabel;
+    private MarginContainer? _header;
+    private PanelContainer? _plate;
+    private MarginContainer? _playersBox;
     private HBoxContainer? _players;
     private VBoxContainer? _feed;
+    private float _feedWidth = FeedWidth;
+    private bool _fitQueued;
+    private Panel? _frame;
+    private StyleBoxFlat? _frameStyle;
+    private bool _canStep;
     private GridContainer? _grid;
     private Control? _strikes;
     private readonly Dictionary<int, float> _struck = new(); // line → how much of its stroke is drawn (0-1)
@@ -42,9 +52,12 @@ internal sealed class BoardPanel
         _footerText = text;
         if (_footer != null)
         {
-            _footer.Text = "·  " + text;
+            _footer.Text = "·  " + text + (_canStep ? "  ·  LB / RB: next player" : "");
         }
     }
+
+    /// <summary>Versus: LB / RB step through the players while the board is open (-1 back, +1 on).</summary>
+    public event Action<int>? Step;
 
     public void Toggle()
     {
@@ -83,7 +96,8 @@ internal sealed class BoardPanel
 
     /// <summary>Builds the book for a board. The book's width depends on the board size, so it's made per board.</summary>
     /// <param name="modeName">What to call the mode on the nameplate (e.g. "Solo" for a one-player run).</param>
-    public void Build(BingoBoard board, string modeName)
+    /// <param name="compact">Versus with other players: a smaller nameplate, to leave room for their previews.</param>
+    public void Build(BingoBoard board, string modeName, bool compact = false)
     {
         var wasVisible = Visible;
         if (_book != null)
@@ -106,38 +120,52 @@ internal sealed class BoardPanel
         // Nameplate: title, score and board code.
         var info = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         info.AddThemeConstantOverride("separation", 0);
-        _stats = BingoStyle.Ink("", BingoFonts.NoteBold, 19, BingoStyle.NameplateText);
-        info.AddChild(_stats);
+        var statsRow = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        statsRow.AddThemeConstantOverride("separation", 6);
+        // Someone else's board: their name in their color, before the score.
+        _whoTag = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
+        _whoLabel = BingoStyle.Ink("", BingoFonts.Heading, compact ? 13 : 15, Colors.White);
+        _whoTag.AddChild(_whoLabel);
+        statsRow.AddChild(_whoTag);
+        _stats = BingoStyle.Ink("", BingoFonts.NoteBold, compact ? 17 : 19, BingoStyle.NameplateText);
+        statsRow.AddChild(_stats);
+        info.AddChild(statsRow);
         // "Board: code [clip] · mode"
+        var codeSize = compact ? 13 : 15;
         var codeRow = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         codeRow.AddThemeConstantOverride("separation", 2);
         var soft = BingoStyle.NameplateText with { A = 0.8f };
-        codeRow.AddChild(BingoStyle.Ink($"Board: {board.Code}", BingoFonts.NoteBold, 15, soft));
-        codeRow.AddChild(CopyClip.Create(board.Code, BingoStyle.NameplateText, 15));
-        codeRow.AddChild(BingoStyle.Ink($"·  {modeName}", BingoFonts.NoteBold, 15, soft));
+        codeRow.AddChild(BingoStyle.Ink($"Board: {board.Code}", BingoFonts.NoteBold, codeSize, soft));
+        codeRow.AddChild(CopyClip.Create(board.Code, BingoStyle.NameplateText, codeSize));
+        codeRow.AddChild(BingoStyle.Ink($"·  {modeName}", BingoFonts.NoteBold, codeSize, soft));
         info.AddChild(codeRow);
-        // The nameplate stays centered; Versus previews of each player's board sit at the right.
-        var header = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        content.AddChild(header);
-        header.AddChild(Nameplate("BINGO!", info));
+        // The nameplate stays centered with the feed at its left. Versus previews of each player's
+        // board sit centered in the space at its right (FitHeader).
+        _header = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        content.AddChild(_header);
+        var (plateCenter, plate) = MakeNameplate("BINGO!", info, compact);
+        _plate = plate;
+        _header.AddChild(plateCenter);
+        _playersBox = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        _header.AddChild(_playersBox);
         _players = new HBoxContainer
         {
             MouseFilter = Control.MouseFilterEnum.Ignore,
-            Alignment = BoxContainer.AlignmentMode.End,
+            Alignment = BoxContainer.AlignmentMode.Center,
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
         };
-        _players.AddThemeConstantOverride("separation", 8);
-        header.AddChild(_players);
+        _playersBox.AddChild(_players);
+        _header.Resized += QueueFit;
         // Co-op: the latest happenings, at the left.
         _feed = new VBoxContainer
         {
             MouseFilter = Control.MouseFilterEnum.Pass,
             SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-            CustomMinimumSize = new Vector2(FeedWidth, 0),
+            CustomMinimumSize = new Vector2(_feedWidth, 0),
         };
         _feed.AddThemeConstantOverride("separation", 0);
-        header.AddChild(_feed);
+        _header.AddChild(_feed);
 
         _grid = new GridContainer { Columns = board.Size, MouseFilter = Control.MouseFilterEnum.Ignore };
         _grid.AddThemeConstantOverride("h_separation", Gap);
@@ -149,6 +177,14 @@ internal sealed class BoardPanel
         _strikes = new Control { MouseFilter = Control.MouseFilterEnum.Ignore, Material = HighlighterMaterial };
         _strikes.Draw += DrawStrikes;
         gridLayers.AddChild(_strikes);
+        // A frame in the player's color while you're looking at someone else's board.
+        _frameStyle = new StyleBoxFlat { DrawCenter = false, AntiAliasing = true };
+        _frameStyle.SetBorderWidthAll(4);
+        _frameStyle.SetCornerRadiusAll(8);
+        _frameStyle.SetExpandMarginAll(10);
+        _frame = new Panel { MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
+        _frame.AddThemeStyleboxOverride("panel", _frameStyle);
+        gridLayers.AddChild(_frame);
         foreach (var square in board.Squares)
         {
             var column = square.Index % board.Size;
@@ -159,7 +195,10 @@ internal sealed class BoardPanel
         }
 
         content.AddChild(Legend(out _footer));
+        _canStep = false;
         SetFooter(_footerText);
+        WatchShoulders(_book.Root);
+        QueueFit();
 
         if (wasVisible)
         {
@@ -191,7 +230,7 @@ internal sealed class BoardPanel
             var line = BingoStyle.Ink(text, BingoFonts.NoteBold, 13, i == 0 ? BingoStyle.PageInk : BingoStyle.PageInkSoft);
             line.ClipText = true;
             line.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-            line.CustomMinimumSize = new Vector2(FeedWidth, 0);
+            line.CustomMinimumSize = new Vector2(_feedWidth, 0);
             line.MouseFilter = Control.MouseFilterEnum.Pass;
             _feed.AddChild(line);
         }
@@ -204,14 +243,125 @@ internal sealed class BoardPanel
         {
             PlayerPreviews.Fill(_players, _size, players, pick);
         }
+        var canStep = players.Count >= 2;
+        if (canStep != _canStep)
+        {
+            _canStep = canStep;
+            SetFooter(_footerText);
+        }
+        QueueFit();
+    }
+
+    private const float HeaderPad = 12;
+
+    private void QueueFit()
+    {
+        if (_fitQueued)
+        {
+            return;
+        }
+        _fitQueued = true;
+        Callable.From(FitHeader).CallDeferred();
+    }
+
+    /// <summary>
+    /// Lays out the header: the nameplate centered, shrunk only if the player previews leave it too
+    /// little room; the previews centered in the space at its right; the feed in the space at its left.
+    /// </summary>
+    private void FitHeader()
+    {
+        _fitQueued = false;
+        if (!GodotObject.IsInstanceValid(_header) || _header is not { } header || _plate is not { } plate
+            || _players is not { } players || _playersBox is not { } box || _feed is not { } feed)
+        {
+            return;
+        }
+        var width = header.Size.X;
+        if (width <= 0)
+        {
+            return;
+        }
+        var plateWidth = plate.GetCombinedMinimumSize().X;
+        var cards = players.GetChildCount() > 0 ? players.GetCombinedMinimumSize().X : 0;
+        var scale = 1f;
+        var room = width - 2 * (cards + HeaderPad);
+        if (cards > 0 && plateWidth > room && room > 0)
+        {
+            scale = room / plateWidth;
+        }
+        // The center container sizes the plate to its minimum size, so this is its middle even before layout.
+        plate.PivotOffset = plate.GetCombinedMinimumSize() / 2;
+        plate.Scale = new Vector2(scale, scale);
+        var shown = plateWidth * scale;
+        box.AddThemeConstantOverride("margin_left", (int)Math.Ceiling((width + shown) / 2 + HeaderPad));
+        _feedWidth = Math.Clamp((width - shown) / 2 - HeaderPad, 80, FeedWidth);
+        feed.CustomMinimumSize = new Vector2(_feedWidth, 0);
+        foreach (var child in feed.GetChildren())
+        {
+            if (child is Label { ClipText: true } line)
+            {
+                line.CustomMinimumSize = new Vector2(_feedWidth, 0);
+            }
+        }
+        feed.Size = new Vector2(_feedWidth, feed.Size.Y);
+    }
+
+    /// <summary>LB / RB while the board is open and on top: step through the players.</summary>
+    private void WatchShoulders(Control root)
+    {
+        if (Engine.GetMainLoop() is not SceneTree tree)
+        {
+            return;
+        }
+        bool wasLeft = false, wasRight = false;
+        void Poll()
+        {
+            if (!GodotObject.IsInstanceValid(root))
+            {
+                tree.ProcessFrame -= Poll;
+                return;
+            }
+            try
+            {
+                bool left = false, right = false;
+                foreach (var pad in Input.GetConnectedJoypads())
+                {
+                    left |= Input.IsJoyButtonPressed(pad, JoyButton.LeftShoulder);
+                    right |= Input.IsJoyButtonPressed(pad, JoyButton.RightShoulder);
+                }
+                // Only while the board is the book on top: another book opened over it hides nothing of
+                // the board, so check that no book with a backdrop is open.
+                if (_canStep && root.Visible && !BookFrame.AnyBackdropOpen)
+                {
+                    if (left && !wasLeft)
+                    {
+                        Step?.Invoke(-1);
+                    }
+                    else if (right && !wasRight)
+                    {
+                        Step?.Invoke(1);
+                    }
+                }
+                wasLeft = left;
+                wasRight = right;
+            }
+            catch (Exception ex)
+            {
+                tree.ProcessFrame -= Poll;
+                BingoLog.Warn($"couldn't read the controller's shoulder buttons: {ex.Message}");
+            }
+        }
+        tree.ProcessFrame += Poll;
     }
 
     /// <param name="others">Lockout only: squares another player took, with their name.</param>
     /// <param name="lines">Finished lines (indices into <see cref="BoardRules.Lines"/>).</param>
     /// <param name="whose">Whose board this is when it isn't yours, for the nameplate.</param>
+    /// <param name="whoseColor">That player's color, for their name tag and the frame round the board.</param>
     /// <param name="oneAway">Squares that would finish a line: "" for this board's player, or (Lockout) a rival's name.</param>
     public void Update(IReadOnlySet<int> filled, IReadOnlySet<int> inLines, IReadOnlyList<int> lines, int total,
-        IReadOnlyDictionary<int, string>? others = null, string? whose = null, IReadOnlyDictionary<int, string>? oneAway = null)
+        IReadOnlyDictionary<int, string>? others = null, string? whose = null, IReadOnlyDictionary<int, string>? oneAway = null,
+        Color? whoseColor = null)
     {
         foreach (var line in lines.Where(l => !_struck.ContainsKey(l)))
         {
@@ -231,15 +381,34 @@ internal sealed class BoardPanel
             cell.SetState(filled.Contains(index), inLines.Contains(index), others?.GetValueOrDefault(index));
             cell.SetOneAway(oneAway?.GetValueOrDefault(index));
         }
+        var lineText = lines.Count switch
+        {
+            0 => "",
+            1 => "  ·  1 line!",
+            _ => $"  ·  {lines.Count} lines!",
+        };
+        var color = whoseColor ?? BingoStyle.PageInkSoft;
         if (_stats != null)
         {
-            _stats.Text = (whose != null ? $"{whose}'s board  ·  " : "") + $"{filled.Count} / {total} squares" + (lines.Count switch
-            {
-                0 => "",
-                1 => "  ·  1 line!",
-                _ => $"  ·  {lines.Count} lines!",
-            });
+            // Someone else's board: their name goes in the tag, so the score is kept short.
+            _stats.Text = whose != null ? $"{filled.Count} / {total}{lineText}" : $"{filled.Count} / {total} squares{lineText}";
         }
+        if (_whoTag != null && _whoLabel != null)
+        {
+            _whoTag.Visible = whose != null;
+            _whoLabel.Text = whose != null ? $"{whose.ToUpperInvariant()}'S BOARD" : "";
+            var tag = BingoStyle.Box(color, 6, 0, Colors.Transparent, 0, new Color(0, 0, 0, 0.25f), 2);
+            tag.ContentMarginLeft = tag.ContentMarginRight = 8;
+            tag.ContentMarginTop = 1;
+            tag.ContentMarginBottom = 3;
+            _whoTag.AddThemeStyleboxOverride("panel", tag);
+        }
+        if (_frame != null && _frameStyle != null)
+        {
+            _frame.Visible = whose != null;
+            _frameStyle.BorderColor = color;
+        }
+        QueueFit();
     }
 
     /// <summary>Swipes the highlighter through a finished line, from its first square to its last.</summary>
@@ -355,7 +524,10 @@ internal sealed class BoardPanel
     }
 
     /// <summary>The brass nameplate at the top of a book page.</summary>
-    public static Control Nameplate(string title, Control? info)
+    public static Control Nameplate(string title, Control? info) => MakeNameplate(title, info, compact: false).Center;
+
+    /// <param name="compact">A smaller plate (Versus with other players, to leave room for their previews).</param>
+    private static (CenterContainer Center, PanelContainer Plate) MakeNameplate(string title, Control? info, bool compact)
     {
         var center = new CenterContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         var plate = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -364,30 +536,31 @@ internal sealed class BoardPanel
         box.BorderColor = BingoStyle.BrassDark;
         box.BorderWidthTop = 1;
         box.ShadowOffset = new Vector2(0, 4);
-        box.ContentMarginLeft = box.ContentMarginRight = 26;
-        box.ContentMarginTop = 6;
-        box.ContentMarginBottom = 8;
+        box.ContentMarginLeft = box.ContentMarginRight = compact ? 18 : 26;
+        box.ContentMarginTop = compact ? 5 : 6;
+        box.ContentMarginBottom = compact ? 7 : 8;
         box.AntiAliasing = true;
         plate.AddThemeStyleboxOverride("panel", box);
         center.AddChild(plate);
 
         var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
-        row.AddThemeConstantOverride("separation", 20);
+        row.AddThemeConstantOverride("separation", compact ? 14 : 20);
         plate.AddChild(row);
         // Cream letters with a thick near-black outline and a hard drop shadow.
         var ink = Color.FromHtml("#1c1611");
-        var heading = BingoStyle.Ink(title, BingoFonts.Heading, 46, BingoStyle.Cream);
+        var outline = compact ? 8 : 9;
+        var heading = BingoStyle.Ink(title, BingoFonts.Heading, compact ? 40 : 46, BingoStyle.Cream);
         heading.AddThemeColorOverride("font_outline_color", ink);
-        heading.AddThemeConstantOverride("outline_size", 9);
+        heading.AddThemeConstantOverride("outline_size", outline);
         heading.AddThemeColorOverride("font_shadow_color", ink);
         heading.AddThemeConstantOverride("shadow_offset_x", 0);
-        heading.AddThemeConstantOverride("shadow_offset_y", 4);
-        heading.AddThemeConstantOverride("shadow_outline_size", 9);
+        heading.AddThemeConstantOverride("shadow_offset_y", compact ? 3 : 4);
+        heading.AddThemeConstantOverride("shadow_outline_size", outline);
         heading.VerticalAlignment = VerticalAlignment.Center;
         // Lifted a little, so the drop shadow has room above the plate's bottom edge.
         var lift = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        lift.AddThemeConstantOverride("margin_top", -7);
-        lift.AddThemeConstantOverride("margin_bottom", 11);
+        lift.AddThemeConstantOverride("margin_top", compact ? -6 : -7);
+        lift.AddThemeConstantOverride("margin_bottom", compact ? 9 : 11);
         lift.AddChild(heading);
         row.AddChild(lift);
         if (info != null)
@@ -395,7 +568,7 @@ internal sealed class BoardPanel
             info.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             row.AddChild(info);
         }
-        return center;
+        return (center, plate);
     }
 
     /// <summary>The difficulty key along the bottom of the page.</summary>

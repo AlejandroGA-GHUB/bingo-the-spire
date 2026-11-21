@@ -49,6 +49,14 @@ internal static class BingoStyle
     /// <summary>"1 AWAY!" stamps: yours, and a Lockout rival's.</summary>
     public static Color OneAwayInk => ColorblindSafe ? Color.FromHtml("#d55e00") : Color.FromHtml("#d9730d");
 
+    /// <summary>
+    /// Versus: each player's color, by their place in the row of previews (you first). Marks whose
+    /// board you're looking at when it isn't yours.
+    /// </summary>
+    public static Color PlayerColor(int place) => Color.FromHtml((ColorblindSafe
+        ? new[] { "#009e73", "#e69f00", "#56b4e9", "#cc79a7" }
+        : new[] { "#2bb3a0", "#e8862e", "#8e5ee0", "#e04848" })[Math.Abs(place) % 4]);
+
     public static Color RivalOneAwayInk => ColorblindSafe ? Color.FromHtml("#7a3f8f") : TakenInk;
 
     public static Color Difficulty(int difficulty) => ColorblindSafe ? SafeDifficulty(difficulty) : difficulty switch

@@ -43,6 +43,7 @@ internal sealed class BingoOverlay
         _root = root;
 
         _board = new BoardPanel(root);
+        _board.Step += StepView;
         _toasts = new Toasts(root);
         _icon = new BingoIcon(root, settings, Toggle);
         _icon.Root.Visible = false; // until there's a board: bingo can be off for the run
@@ -187,7 +188,7 @@ internal sealed class BingoOverlay
         var local = _viewing;
         // Solo boards are Versus under the hood; call them what they are.
         var solo = BingoNet.Role == NetRole.Solo || session.State.Players.Count < 2;
-        _board.Build(session.Board, solo ? "Solo" : session.Board.Mode.ToString());
+        _board.Build(session.Board, solo ? "Solo" : session.Board.Mode.ToString(), compact: !solo && session.Board.Mode == BingoMode.Versus);
         foreach (var square in Enumerable.Range(0, session.Board.Squares.Count))
         {
             var by = session.State.OwnerOf(square) ?? local;
@@ -251,6 +252,23 @@ internal sealed class BingoOverlay
         }
     }
 
+    /// <summary>Players in the order of the previews: you first, then everyone else.</summary>
+    private List<ulong> PreviewOrder() =>
+        _session?.State.Players.OrderBy(p => p != _localPlayer).ToList() ?? [];
+
+    /// <summary>Versus, LB / RB on the open board: the previous or next player's board.</summary>
+    private void StepView(int direction)
+    {
+        var order = PreviewOrder();
+        if (_session?.Board.Mode != BingoMode.Versus || order.Count < 2)
+        {
+            return;
+        }
+        var at = Math.Max(0, order.IndexOf(_viewing));
+        Sfx.Play(Sfx.Click);
+        View(order[(at + direction + order.Count) % order.Count]);
+    }
+
     /// <summary>Versus: show another player's board (or your own again).</summary>
     private void View(ulong player) => Deferred(() =>
     {
@@ -310,7 +328,9 @@ internal sealed class BingoOverlay
                 others[square] = Name(owner);
             }
         }
-        _board.Update(filled, inLines, lines, _session.Board.Squares.Count, others, _viewing == _localPlayer ? null : Name(_viewing), OneAway());
+        var mine = _viewing == _localPlayer;
+        _board.Update(filled, inLines, lines, _session.Board.Squares.Count, others, mine ? null : Name(_viewing), OneAway(),
+            mine ? null : BingoStyle.PlayerColor(PreviewOrder().IndexOf(_viewing)));
         _board.SetPlayers(Previews(), View);
         _board.SetFeed(Feed());
 
@@ -386,8 +406,7 @@ internal sealed class BingoOverlay
             return [];
         }
         var size = session.Board.Size;
-        return session.State.Players
-            .OrderBy(p => p != _localPlayer)
+        return PreviewOrder()
             .Select(p =>
             {
                 var lines = session.State.LinesFor(p);
