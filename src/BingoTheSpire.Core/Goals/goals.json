@@ -92,7 +92,7 @@
     { "id": "rest_smiths", "text": "Upgrade a card at {n} rest sites", "detector": "RestSmiths", "tags": ["rest"],
       "tiers": [ { "difficulty": 1, "params": { "n": 2 } }, { "difficulty": 2, "params": { "n": 4 } }, { "difficulty": 3, "params": { "n": 6 } } ] },
     { "id": "rest_heals", "text": "Rest at {n} rest sites", "detector": "RestHeals", "tags": ["rest"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 2 } }, { "difficulty": 2, "params": { "n": 3 } }, { "difficulty": 3, "params": { "n": 5 } } ] },
+      "tiers": [ { "difficulty": 2, "params": { "n": 2 } }, { "difficulty": 3, "params": { "n": 3 } }, { "difficulty": 4, "params": { "n": 4 } } ] },
 
     // ---- Character goals (only when every player is that character, or anyone in Team) -----
     { "id": "ironclad_strength", "text": "Have {n}+ Strength", "detector": "StrengthStacks", "tags": ["buffs"], "exclusions": ["buff_stacks"],
