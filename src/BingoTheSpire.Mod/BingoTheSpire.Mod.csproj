@@ -10,7 +10,8 @@
     <RootNamespace>BingoTheSpire.Mod</RootNamespace>
     <ModId>BingoTheSpire</ModId>
     <!-- Keep in sync with "version" in BingoTheSpire.json. -->
-    <Version>0.1.0</Version>
+    <!-- One version, kept in the manifest: the DLL reports the same number. -->
+    <Version>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)BingoTheSpire.json')), '"version"\s*:\s*"([^"]+)"').Groups[1].Value)</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <!-- Deploy into the game's mods folder after building, when the game is installed. Disable with -p:DeployToGame=false. -->
