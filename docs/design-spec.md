@@ -61,7 +61,7 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 
 | Where | What the player sees |
 |---|---|
-| **Every screen where a run is set up** (character select solo or co-op, custom run, and beta's extra modes) | The **bingo icon** (the same one as in a run) under the game's version text in the top right, with an ON or OFF badge. It opens the Bingo panel |
+| **Every screen where a run is set up** (character select solo or co-op, custom run, and beta's extra modes) | The **bingo icon** (the same one as in a run) under the game's version text in the top right, or just above the seed box on the custom run screen, with an ON or OFF badge. It opens the Bingo panel |
 | **The Bingo panel** | An open book (section 4.4). **ON and OFF buttons** (remembered between runs, on by default), the **bingo-seed box**, and in co-op the three **modes as notes to pick from**, with the picked mode explained in plain words on the right-hand page |
 | **Co-op** | Only the **host** sets the bingo options. Other players see them, read-only, and they're sent to them over the game's own co-op connection |
 
@@ -118,7 +118,8 @@ Rules for every mode:
 - **Your board:** 5×5 grid of notes showing each goal's text, a **DONE** stamp on filled squares (gold when part of a finished line), and **progress on goals in progress** (e.g. "7/10 cards this turn", "Block 38/50"). A brass nameplate shows the score and "Board: code"; the difficulty key runs along the bottom of the page.
   - **Versus:** only your own squares. **Lockout:** squares someone else took are greyed out with "Taken by Sam". **Team:** every filled square is just DONE, whoever filled it.
 - **Teammate previews** (co-op): one small board per teammate showing only which cells are filled. **Clicking one opens that player's full board.** In Lockout and Team, the one shared board shows everyone's colors instead.
-- **Hover details:** who completed the square (if it wasn't you), on which floor and turn, and the evidence (e.g. "53 Block on turn 4, Act 2 floor 22").
+- **Hover details** (filled squares only; the goal text is already on the note): who completed the square (if it wasn't you), on which floor and turn, and the evidence (e.g. "53 Block on turn 4, Act 2 floor 22").
+- **The game's own cursor** stays on screen over the bingo UI: no hand or text cursors, since the game only draws its own arrow.
 - **"One away" marker:** shown when any player (you or a teammate) needs one more square for a line.
 - **Activity feed:** "Sam completed *50+ Block* (floor 22)", "BINGO: Alex (floor 18)", and so on.
 - **Toasts** for your own completions and important events (a teammate's bingo, a locked square you were working on).
