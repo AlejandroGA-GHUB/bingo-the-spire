@@ -25,7 +25,7 @@ public class SeedAndCodeTests
     [Fact]
     public void BoardCode_RoundTrips()
     {
-        var board = BoardBuilder.Build(TestGoals.Pool(), new BoardRequest("7K2M9QX4ZB1C", BingoMode.Lockout, "Blitz", ["IRONCLAD"]));
+        var board = BoardBuilder.Build(TestGoals.Pool(), new BoardRequest("7K2M9QX4ZB1C", BingoMode.Lockout, "Blitz", ["IRONCLAD"], BoardDifficulty.Medium));
         Assert.Equal("7K2M9QX4ZB1C-1L4M", board.Code);
 
         Assert.True(BoardCode.TryParse(board.Code.ToLowerInvariant(), out var parsed));

@@ -32,6 +32,9 @@ internal sealed class BingoSettings
     /// <summary>The co-op mode last picked as host. Remembered between runs.</summary>
     public BingoMode Mode { get; private set; } = BingoMode.Versus;
 
+    /// <summary>The board difficulty last picked. Remembered between runs.</summary>
+    public BoardDifficulty Difficulty { get; private set; } = BoardDifficulty.Easy;
+
     /// <summary>
     /// What's in the bingo-seed box. Not saved: it's cleared once a run starts with it, so the
     /// next run doesn't quietly reuse the same board.
@@ -39,7 +42,7 @@ internal sealed class BingoSettings
     public string? SeedEntry { get; private set; }
 
     /// <summary>This game's choice for the next run (in co-op, only the host's counts).</summary>
-    public BingoSetup Setup => new(Enabled, SeedEntry, Mode);
+    public BingoSetup Setup => new(Enabled, SeedEntry, Mode, Difficulty);
 
     public static string FilePath => Path.Combine(DataPaths.Root, "settings.json");
 
@@ -75,6 +78,12 @@ internal sealed class BingoSettings
             {
                 settings.Mode = mode;
             }
+            if (root["difficulty"]?.GetValueKind() == JsonValueKind.String
+                && Enum.TryParse<BoardDifficulty>(root["difficulty"]!.GetValue<string>(), ignoreCase: true, out var difficulty)
+                && Enum.IsDefined(difficulty))
+            {
+                settings.Difficulty = difficulty;
+            }
             if (root["iconPosition"] is JsonArray { Count: 2 } pos
                 && pos[0]?.GetValueKind() == JsonValueKind.Number && pos[1]?.GetValueKind() == JsonValueKind.Number)
             {
@@ -107,13 +116,14 @@ internal sealed class BingoSettings
         Save();
     }
 
-    public void SetSetup(bool enabled, string? seedEntry, BingoMode mode)
+    public void SetSetup(bool enabled, string? seedEntry, BingoMode mode, BoardDifficulty difficulty)
     {
         SeedEntry = string.IsNullOrWhiteSpace(seedEntry) ? null : seedEntry.Trim();
-        if (Enabled != enabled || Mode != mode)
+        if (Enabled != enabled || Mode != mode || Difficulty != difficulty)
         {
             Enabled = enabled;
             Mode = mode;
+            Difficulty = difficulty;
             Save();
         }
     }
@@ -130,6 +140,7 @@ internal sealed class BingoSettings
             {
                 ["enabled"] = Enabled,
                 ["mode"] = Mode.ToString(),
+                ["difficulty"] = Difficulty.ToString(),
                 ["hotkey"] = Hotkey ?? "off",
                 ["colorblindSafe"] = ColorblindSafe,
                 ["iconPosition"] = IconPosition is { } p

@@ -8,7 +8,8 @@ namespace BingoTheSpire.Core.Session;
 /// <param name="Enabled">False plays the run without bingo.</param>
 /// <param name="SeedEntry">What's in the bingo-seed box: empty (use the run seed), a bingo seed, or a board code.</param>
 /// <param name="Mode">Co-op mode. Solo always plays Versus, unless a board code says otherwise.</param>
-public sealed record BingoSetup(bool Enabled, string? SeedEntry, BingoMode Mode)
+/// <param name="Difficulty">How many difficulty 5 squares the board gets. A board code brings its own.</param>
+public sealed record BingoSetup(bool Enabled, string? SeedEntry, BingoMode Mode, BoardDifficulty Difficulty = BoardDifficulty.Easy)
 {
     public static BingoSetup Default { get; } = new(true, null, BingoMode.Versus);
 
@@ -31,7 +32,7 @@ public sealed record BingoSetup(bool Enabled, string? SeedEntry, BingoMode Mode)
                 throw new BoardBuildException(entry.Error!);
             default:
                 var seed = entry.Kind == SeedEntryKind.Seed ? entry.Seed! : runSeed;
-                return new BoardRequest(seed, coop ? Mode : BingoMode.Versus, gameMode, characterIds);
+                return new BoardRequest(seed, coop ? Mode : BingoMode.Versus, gameMode, characterIds, Difficulty);
         }
     }
 }

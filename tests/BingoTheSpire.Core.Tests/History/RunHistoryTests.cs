@@ -52,9 +52,18 @@ public class RunHistoryTests
         Assert.Equal(new HistoryLine(Alex, 0, 1, 0, 6, 600_000), entry.FirstLine);
         Assert.Equal((2, 9), (entry.Lines[1].Ordinal, entry.Lines[1].Floor));
 
+        Assert.Equal(9, entry.EndFloor);
+        Assert.Equal(16, entry.DifficultyTotals!.Sum());
+        Assert.Equal(8, entry.DifficultyDone!.Sum());
+
         var back = Assert.Single(RunHistory.Parse([RunHistory.Serialize(entry), "not json", ""]));
         Assert.Equal(entry.FirstLine, back.FirstLine);
         Assert.Equal(entry.BoardCode, back.BoardCode);
+        Assert.Equal(entry.DifficultyDone, back.DifficultyDone);
+
+        // Entries saved before these fields existed (nulls aren't written) still read, with them empty.
+        var old = Assert.Single(RunHistory.Parse([RunHistory.Serialize(entry with { EndAct = null, EndFloor = null, DifficultyTotals = null, DifficultyDone = null })]));
+        Assert.Null(old.DifficultyDone);
     }
 
     [Fact]

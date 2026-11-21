@@ -21,7 +21,6 @@ internal sealed class BoardPanel
     private Label? _stats;
     private HBoxContainer? _players;
     private VBoxContainer? _feed;
-    private Label? _code;
     private GridContainer? _grid;
     private Control? _strikes;
     private readonly Dictionary<int, float> _struck = new(); // line → how much of its stroke is drawn (0-1)
@@ -109,8 +108,14 @@ internal sealed class BoardPanel
         info.AddThemeConstantOverride("separation", 0);
         _stats = BingoStyle.Ink("", BingoFonts.NoteBold, 19, BingoStyle.NameplateText);
         info.AddChild(_stats);
-        _code = BingoStyle.Ink($"Board: {board.Code}  ·  {modeName}", BingoFonts.NoteBold, 15, BingoStyle.NameplateText with { A = 0.8f });
-        info.AddChild(_code);
+        // "Board: code [clip] · mode"
+        var codeRow = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        codeRow.AddThemeConstantOverride("separation", 2);
+        var soft = BingoStyle.NameplateText with { A = 0.8f };
+        codeRow.AddChild(BingoStyle.Ink($"Board: {board.Code}", BingoFonts.NoteBold, 15, soft));
+        codeRow.AddChild(CopyClip.Create(board.Code, BingoStyle.NameplateText, 15));
+        codeRow.AddChild(BingoStyle.Ink($"·  {modeName}", BingoFonts.NoteBold, 15, soft));
+        info.AddChild(codeRow);
         // The nameplate stays centered; Versus previews of each player's board sit at the right.
         var header = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         content.AddChild(header);

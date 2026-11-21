@@ -44,9 +44,14 @@ public static class BoardBuilder
             throw new BoardBuildException($"only {pool.Count} goals are available for this run; a {size}×{size} board needs {size * size}");
         }
 
-        var bands = BoardRules.DifficultyBands(size, request.Difficulty);
+        var bands = BoardRules.DifficultyBands(size);
         var layout = DifficultyLayout.Create(size, rng);
+        var hard = DifficultyLayout.PickHardCells(layout, size, BoardRules.HardSquares(size, request.Difficulty), rng);
         var targets = layout.Select(band => bands[band]).ToArray();
+        foreach (var cell in hard)
+        {
+            targets[cell] = GoalList.MaxDifficulty;
+        }
         var lines = BoardRules.Lines(size);
         var linesOfCell = Enumerable.Range(0, size * size)
             .Select(cell => lines.Where(line => line.Contains(cell)).ToArray())

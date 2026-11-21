@@ -49,7 +49,7 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 8. Local history of past boards and results, shown in the game.
 
 **Not in v1** (see section 16 for later ideas)
-- Board size and difficulty settings (beyond the automatic 4×4 for Blitz), Blackout, solo Score mode.
+- Board size settings (beyond the automatic 4×4 for Blitz), an Extreme difficulty (a 5 in every line), Blackout, solo Score mode.
 - Custom or user-written boards.
 - Web spectator view, OBS overlay, online leaderboards.
 - Anything that changes gameplay. The mod only watches.
@@ -61,11 +61,12 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 | Where | What the player sees |
 |---|---|
 | **Every screen where a run is set up** (character select solo or co-op, custom run, and beta's extra modes) | The **bingo icon** (the same one as in a run) under the game's version text in the top right, or just above the seed box on the custom run screen, with an ON or OFF badge. It opens the Bingo panel |
-| **The Bingo panel** | An open book (section 4.4). **ON and OFF buttons** (remembered between runs, on by default), the **bingo-seed box**, and in co-op the three **modes as notes to pick from**, with the picked mode explained in plain words on the right-hand page |
+| **The Bingo panel** | An open book (section 4.4). **ON and OFF buttons** (remembered between runs, on by default), the **board difficulty** as three small notes (Easy / Medium / Hard, explained under them), the **bingo-seed box**, and in co-op the three **modes as notes to pick from**, with the picked mode explained in plain words on the right-hand page |
 | **Co-op** | Only the **host** sets the bingo options. Other players see them, read-only, and they're sent to them over the game's own co-op connection |
 
 - **The bingo-seed box** (labelled "Board seed" in the game) takes nothing (the board comes from the run seed), a bingo seed, or a full board code (section 5). The hint leads with the common case: leave it empty for the run's seed, or paste the board seed shown at the top of any board ("Board: ...") to play that board instead. It then says which one it read; a bad entry is shown in red and turns bingo off for that run.
-- The seed entry is **cleared once a run starts with it**, so the next run doesn't quietly reuse the same board. The on/off choice and the co-op mode are remembered.
+- The seed entry is **cleared once a run starts with it**, so the next run doesn't quietly reuse the same board. The on/off choice, the difficulty and the co-op mode are remembered.
+- **Board difficulty:** Easy (the default) has no difficulty 5 squares, Medium has one in the middle, Hard has three (two on 4×4 Blitz boards). In co-op the host picks it. A pasted board code brings its own difficulty.
 - If nothing is set, the board is built from the run seed and the mode is Versus. The board is built when the run starts and stays fixed for that run. With bingo off, the run has no board, no icon, and nothing is tracked.
 
 ### 4.2 Solo
@@ -122,7 +123,7 @@ Rules for every mode:
   - Players can set their own key, or turn the hotkey off, in the bingo settings.
 - **Controller:** a free controller button opens the board (the first one no game action uses, from Select / View, R3, L3, Share; the settings book says which). Every bingo book can be moved through with the stick or d-pad (a gold ring shows where you are), Accept picks, and Back / Esc closes the book. While a book is open, the game's own hotkeys are held back, so Back doesn't also open the pause menu. Mouse clicks never leave a ring behind.
 - **Look:** the board and the Bingo panel are an **open book** with curved pages, drawn in code so they're sharp at any resolution. Each square is a **paper note** taped to the page, with its difficulty as a colored corner. Headings use Mochiy Pop One and notes use Mali (both SIL OFL, embedded in the mod).
-- **Your board:** 5×5 grid of notes showing each goal's text, a **DONE** stamp on filled squares (gold when part of a finished line), and **progress on goals in progress** (e.g. "7/10 cards this turn", "Block 38/50"). A brass nameplate (a cream "BINGO!" with a thick near-black outline) shows the score, "Board: code" and the mode ("Solo" in a one-player run, which plays by Versus rules); the difficulty key runs along the bottom of the page.
+- **Your board:** 5×5 grid of notes showing each goal's text, a **DONE** stamp on filled squares (gold when part of a finished line), and **progress on goals in progress** (e.g. "7/10 cards this turn", "Block 38/50"). A brass nameplate (a cream "BINGO!" with a thick near-black outline) shows the score, "Board: code" with a **paperclip that copies the code**, and the mode ("Solo" in a one-player run, which plays by Versus rules); the difficulty key runs along the bottom of the page.
   - **Versus:** only your own squares. **Lockout:** squares someone else took are greyed out with "Taken by Sam". **Team:** every filled square is just DONE, whoever filled it.
   - **Progress only shows while it can still count.** Turn, fight and one-moment goals show it during the fight and clear when the fight ends. Goals that build over the run (rest sites, potions used, cards removed, relics bought, elites, exact kills, gold held, flawless normal fights) keep their bars. Gold held shows the gold you (or your team) hold right now, not the best so far: it drops when gold is spent, and every player's gold is checked again at each new room, since the game doesn't report gold lost in events.
   - Long goal text shrinks to fit its note.
@@ -135,7 +136,7 @@ Rules for every mode:
 - **Problems are shown, not just logged:** an amber toast in the run says what happened and what it means, e.g. "BINGO IS OFF: the host turned bingo off for this run", "BOARD STARTED FRESH", "PROGRESS NOT SAVED: if you quit and Continue, the board starts fresh", "A SQUARE IS STUCK" (a goal hit an error and can't be completed this run), "DIFFERENT VERSIONS" between host and player, and "NOT IN HISTORY". Ones raised before the run screen is up wait for it.
 - **Fonts stay ours** when another mod swaps the game's fonts: our text controls carry the marker CznStyleUI checks to leave a control alone.
 - **Mini-board** that can be pinned in a corner: about 120 px, colors only, hover a cell to see its goal.
-- **Results** a moment after the game's own end-of-run screen appears, as an open book over it: the run's result, squares and play time on the nameplate; placements (or your run / your team) with each player's character, squares and lines; every line with its act, floor and play time; the board code to play it again; and a **Past runs** button.
+- **Results** a moment after the game's own end-of-run screen appears, as an open book over it, with just "BINGO!" on the nameplate. Left page: the board code with its copy clip, the run's facts (mode, difficulty, character in solo, run result, act and floor reached, play time, date) and, in co-op, placements (or your team) with each player's character, squares and lines. Right page: every line with its act, floor and play time, then squares as a bar per player (one team bar in Team) and squares done per difficulty. A **Past runs** button sits underneath.
 - **Settings** (a book opened from **Settings** in the lobby's bingo panel, saved to `settings.json` at once):
   - **Board hotkey:** click, then press any plain key; keys the game already uses are refused with the reason. Or turn it off. Applies from the next run.
   - **Colorblind-safe colors:** difficulty tags, mini-boards and 1 AWAY stamps switch to Okabe-Ito colors that run light to dark as well as by hue. Tags always show their number, Lockout squares always name who took them.
@@ -190,12 +191,13 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 ### 6.2 Board builder
 - Works like Bingosync's "SRL" generator: every row, column and both diagonals add up to **exactly** the same total difficulty.
   - A seeded layout puts one cell of each **difficulty band** in every line (a diagonal Latin square).
-  - Each difficulty setting maps the bands to goal difficulties. 5×5: Easy 1,1,2,2,3; **Medium 1,2,3,3,4**; Hard 2,3,4,4,5. 4×4: Easy 1,1,2,3; **Medium 1,2,3,3**; Hard 2,3,4,5.
+  - The bands are goal difficulties 1,2,3,3,4 on 5×5 and 1,2,3,3 on 4×4, so on Easy every line has the same total.
+  - Medium and Hard raise cells of the top band to difficulty 5. Every line holds exactly one top-band cell, so no line gets two 5s. On 5×5 the bands are swapped so the middle cell is top-band and always the first 5; Hard adds two more at random (one more on 4×4, where the middle four cells are preferred).
   - Cells are filled hardest first. Each gets a random goal tier at the target difficulty, or the closest available.
 - Goals sharing a tag are kept out of the same line whenever the pool allows it. This is why tags should be specific ("block", "potions"), not broad ("combat").
 - Exclusions apply to the whole board, and no goal appears twice (including the same goal with different parameters).
 - The goal list's file order never matters: goals are sorted by id first.
-- v1 default: **5×5, medium difficulty mix**. Other sizes and difficulty settings are built into the data model but not shown in the menus.
+- v1 default: **5×5, Easy**. Other sizes are built into the data model but not shown in the menus.
 - **Game modes:** bingo is on in every game mode.
   - Standard, Custom, Daily and **Dread** (beta) use the normal 5×5 board.
   - **Blitz** (beta) uses a **4×4** board, to fit its shorter runs. Goals that need more of the run than Blitz has are tagged and left out.

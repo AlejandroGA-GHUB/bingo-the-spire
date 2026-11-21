@@ -18,6 +18,7 @@ internal sealed class PaperNote
     private readonly float _tilt;
     private Color? _tag;
     private string _tagText = "";
+    private float _tagSize = TagSize;
     private bool _onSpine;
 
     public PaperNote(Vector2 size, float tiltDegrees)
@@ -78,12 +79,16 @@ internal sealed class PaperNote
     }
 
     /// <summary>The colored corner in the top left, with a number in it.</summary>
-    public void SetTag(Color color, string text)
+    public void SetTag(Color color, string text, float size = TagSize)
     {
         _tag = color;
         _tagText = text;
+        _tagSize = size;
         _art.QueueRedraw();
     }
+
+    /// <summary>For small notes that sit in a row of choices rather than taped to the page.</summary>
+    public void HideTape() => _tape.Visible = false;
 
     /// <summary>Lies across the spine: no tilt, a crease down the middle.</summary>
     public void SetOnSpine(bool onSpine)
@@ -144,9 +149,9 @@ internal sealed class PaperNote
 
         if (_tag is { } tag)
         {
-            Vector2[] corner = [new(0, 0), new(TagSize, 0), new(0, TagSize)];
+            Vector2[] corner = [new(0, 0), new(_tagSize, 0), new(0, _tagSize)];
             _art.DrawColoredPolygon(corner, tag);
-            _art.DrawLine(new Vector2(TagSize, 0), new Vector2(0, TagSize), tag, 1.2f, antialiased: true);
+            _art.DrawLine(new Vector2(_tagSize, 0), new Vector2(0, _tagSize), tag, 1.2f, antialiased: true);
             if (_tagText.Length > 0)
             {
                 var font = BingoFonts.NoteBold;

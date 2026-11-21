@@ -64,6 +64,9 @@ public sealed class BingoSession
     /// <summary>Where each line was made, from the claim that finished it.</summary>
     public IReadOnlyDictionary<(ulong Player, int Line), RunPosition?> LinePositions => _linePositions;
 
+    /// <summary>The latest place in the run any event came from: where the run ended, once it has.</summary>
+    public RunPosition? Position { get; private set; }
+
     private readonly Dictionary<(ulong, int), long> _lineTimes = new();
     private readonly Dictionary<(ulong, int), RunPosition?> _linePositions = new();
 
@@ -79,6 +82,10 @@ public sealed class BingoSession
         if (evt is not ClaimResolved)
         {
             PlayMs = Math.Max(PlayMs, evt.Ms);
+            if (evt.At is { } at && (Position == null || at.Floor >= Position.Floor))
+            {
+                Position = at;
+            }
         }
         switch (evt)
         {

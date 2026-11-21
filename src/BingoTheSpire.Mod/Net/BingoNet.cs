@@ -67,7 +67,8 @@ internal static class BingoNet
             {
                 Enabled = setup.Enabled,
                 SeedEntry = setup.SeedEntry ?? "",
-                BingoMode = (int)setup.Mode,
+                // The difficulty rides in the second byte, so the message keeps its 0.3 layout.
+                BingoMode = (int)setup.Mode | ((int)setup.Difficulty << 8),
                 ModVersion = ModEntry.Version,
             });
         }
@@ -151,8 +152,9 @@ internal static class BingoNet
             var text = $"The host has Bingo the Spire v{message.ModVersion}, you have v{ModEntry.Version}. Boards may not match.";
             Godot.Callable.From(() => Ui.BingoOverlay.Notify("DIFFERENT VERSIONS", text)).CallDeferred();
         }
-        var mode = Enum.IsDefined(typeof(BingoMode), message.BingoMode) ? (BingoMode)message.BingoMode : BingoMode.Versus;
-        HostSetup = new BingoSetup(message.Enabled, string.IsNullOrEmpty(message.SeedEntry) ? null : message.SeedEntry, mode);
+        var mode = Enum.IsDefined(typeof(BingoMode), message.BingoMode & 0xff) ? (BingoMode)(message.BingoMode & 0xff) : BingoMode.Versus;
+        var difficulty = Enum.IsDefined(typeof(BoardDifficulty), message.BingoMode >> 8) ? (BoardDifficulty)(message.BingoMode >> 8) : BoardDifficulty.Easy;
+        HostSetup = new BingoSetup(message.Enabled, string.IsNullOrEmpty(message.SeedEntry) ? null : message.SeedEntry, mode, difficulty);
         HostSetupChanged?.Invoke();
     }
 

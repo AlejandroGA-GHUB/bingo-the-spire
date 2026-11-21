@@ -14,7 +14,7 @@ public sealed record BoardRequest(
     BingoMode Mode,
     string GameMode,
     IReadOnlyList<string> CharacterIds,
-    BoardDifficulty Difficulty = BoardDifficulty.Medium,
+    BoardDifficulty Difficulty = BoardDifficulty.Easy,
     int? Size = null);
 
 /// <summary>What this game version can detect. Goals needing anything else are left off the board.</summary>

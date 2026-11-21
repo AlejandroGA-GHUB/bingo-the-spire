@@ -255,15 +255,22 @@ public class BoardBuilderTests
         var goals = TestGoals.Pool();
         Assert.Equal(KnownAnswers.Standard, string.Join(" ", Ids(BoardBuilder.Build(goals, Request("7K2M9QX4ZB1C")))));
         Assert.Equal(KnownAnswers.Blitz, string.Join(" ", Ids(BoardBuilder.Build(goals, Request("MP482SY6LRHH", gameMode: "Blitz")))));
+        Assert.Equal(KnownAnswers.Hard, string.Join(" ", Ids(BoardBuilder.Build(goals,
+            new BoardRequest("7K2M9QX4ZB1C", BingoMode.Versus, "Standard", ["IRONCLAD"], BoardDifficulty.Hard)))));
     }
 
     private static class KnownAnswers
     {
         public const string Standard =
-            "g4_08 g1_11 g2_11 g3_02 g3_11 g2_03 g3_03 g3_07 g4_09 g1_08 g3_05 g4_05 g1_07 g2_02 g3_09 "
-            + "g1_04 g2_09 g3_00 g3_04 g4_06 g3_01 g3_06 g4_11 g1_05 g2_07";
+            "g1_06 g3_05 g4_03 g3_07 g2_00 g4_08 g3_10 g2_05 g1_08 g3_00 g2_08 g1_04 g3_04 g4_09 g3_02 "
+            + "g3_06 g4_01 g3_03 g2_04 g1_10 g3_11 g2_11 g1_03 g3_01 g4_07";
 
         public const string Blitz =
-            "g3_07 g1_06 g3_11 g2_09 g2_03 g3_02 g1_05 g3_09 g1_00 g3_01 g2_07 g3_03 g3_08 g2_04 g3_06 g1_10";
+            "g3_03 g3_07 g1_11 g2_07 g1_06 g2_11 g3_10 g3_05 g2_05 g1_03 g3_08 g3_11 g3_01 g3_00 g2_03 g1_00";
+
+        /// <summary>Difficulty 5 in the middle and two top-band cells off every shared line.</summary>
+        public const string Hard =
+            "g3_07 g2_00 g1_03 g4_03 g3_04 g5_06 g3_00 g3_03 g2_08 g1_05 g2_10 g1_10 g5_04 g3_06 g3_01 "
+            + "g3_09 g3_05 g2_03 g1_06 g4_11 g1_11 g5_00 g3_08 g3_11 g2_04";
     }
 }

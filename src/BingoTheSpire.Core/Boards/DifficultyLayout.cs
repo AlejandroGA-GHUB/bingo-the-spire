@@ -63,6 +63,41 @@ public static class DifficultyLayout
         return cells;
     }
 
+    /// <summary>
+    /// Picks <paramref name="count"/> cells to raise to difficulty 5, all from the top band so no
+    /// line holds two of them. On 5×5 the middle cell always comes first: the layout's bands are
+    /// swapped so it is a top-band cell. On 4×4 the four middle cells are preferred.
+    /// </summary>
+    public static IReadOnlyList<int> PickHardCells(int[] layout, int size, int count, SeededRandom rng)
+    {
+        if (count <= 0)
+        {
+            return [];
+        }
+        var top = size - 1;
+        var picked = new List<int>();
+        if (size % 2 == 1)
+        {
+            var center = size * size / 2;
+            var other = layout[center];
+            for (var i = 0; i < layout.Length; i++)
+            {
+                layout[i] = layout[i] == other ? top : layout[i] == top ? other : layout[i];
+            }
+            picked.Add(center);
+        }
+        var candidates = Enumerable.Range(0, layout.Length).Where(cell => layout[cell] == top && !picked.Contains(cell)).ToList();
+        rng.Shuffle(candidates);
+        picked.AddRange(candidates.OrderBy(cell => IsMiddle(cell, size) ? 0 : 1).Take(count - picked.Count));
+        return picked;
+    }
+
+    private static bool IsMiddle(int cell, int size)
+    {
+        int r = cell / size, c = cell % size;
+        return r > 0 && r < size - 1 && c > 0 && c < size - 1;
+    }
+
     private static (int R, int C) Transform(int r, int c, int size, int symmetry)
     {
         var m = size - 1;

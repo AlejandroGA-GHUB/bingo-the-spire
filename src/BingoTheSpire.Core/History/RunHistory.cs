@@ -15,7 +15,11 @@ public sealed record HistoryLine(ulong Player, int Line, int Ordinal, int? Act, 
 /// <summary>
 /// One finished bingo run, one JSON line in <c>bingo_history.jsonl</c> (spec 8).
 /// <paramref name="Result"/> is the run's own result ("won", "lost", "abandoned"), separate from the bingo.
+/// The last four were added later and are null in older entries.
 /// </summary>
+/// <param name="EndAct">0-based act the run ended in.</param>
+/// <param name="DifficultyTotals">Squares on the board per difficulty, 1 to 5.</param>
+/// <param name="DifficultyDone">Squares you (or your team) filled per difficulty, 1 to 5.</param>
 public sealed record HistoryEntry(
     int Version,
     long Date,
@@ -32,7 +36,11 @@ public sealed record HistoryEntry(
     List<HistoryPlayer> Players,
     List<HistoryLine> Lines,
     ulong? Winner,
-    string? WinReason)
+    string? WinReason,
+    int? EndAct = null,
+    int? EndFloor = null,
+    int[]? DifficultyTotals = null,
+    int[]? DifficultyDone = null)
 {
     public const int CurrentVersion = 1;
 
@@ -100,7 +108,21 @@ public static class RunHistory
             players,
             historyLines,
             state.Winner?.PlayerId,
-            state.Winner?.Reason.ToString());
+            state.Winner?.Reason.ToString(),
+            session.Position?.Act,
+            session.Position?.Floor,
+            PerDifficulty(board, Enumerable.Range(0, board.Squares.Count)),
+            PerDifficulty(board, state.FilledFor(you)));
+    }
+
+    private static int[] PerDifficulty(BingoBoard board, IEnumerable<int> squares)
+    {
+        var counts = new int[5];
+        foreach (var square in squares)
+        {
+            counts[Math.Clamp(board.Squares[square].Difficulty, 1, 5) - 1]++;
+        }
+        return counts;
     }
 
     public static string Serialize(HistoryEntry entry) => JsonSerializer.Serialize(entry, BingoJsonContext.Default.HistoryEntry);

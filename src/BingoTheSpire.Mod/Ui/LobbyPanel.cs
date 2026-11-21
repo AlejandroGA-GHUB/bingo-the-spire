@@ -33,6 +33,13 @@ internal sealed class LobbyPanel
             "One shared board, filled together. Counts add up across the team, like potions used or cards drawn in a turn, so their numbers are bigger. One-moment goals, like a single big hit, still need one player. There's no winner: see how many squares and lines you can make together."),
     ];
 
+    private static readonly (BoardDifficulty Difficulty, string Name, string Short, int Band, string Text)[] Difficulties =
+    [
+        (BoardDifficulty.Easy, "Easy", "no 5s", 1, "Easy: every square is difficulty 1 to 4, and every line is equally hard."),
+        (BoardDifficulty.Medium, "Medium", "one 5", 4, "Medium: one difficulty 5 square, in the middle of the board."),
+        (BoardDifficulty.Hard, "Hard", "three 5s", 5, "Hard: three difficulty 5 squares (two on Blitz boards): the middle one and more, never two in one line."),
+    ];
+
     private const string SoloText =
         "Goals fill in by themselves as you play. Finish a row, a column or a diagonal for BINGO. Hover a note on the board to see what counted.";
 
@@ -47,6 +54,8 @@ internal sealed class LobbyPanel
     private readonly Label _modeName;
     private readonly Label _modeText;
     private readonly List<(PaperNote Note, PanelContainer Picked)> _modeNotes = [];
+    private readonly List<PaperNote> _difficultyNotes = [];
+    private readonly Label _difficultyHint;
     private BingoSetup _shown = BingoSetup.Default;
     private bool _showing;
 
@@ -82,6 +91,21 @@ internal sealed class LobbyPanel
         _off.Pressed += () => Pick(enabled: false);
         onOff.AddChild(_on);
         onOff.AddChild(_off);
+        left.AddChild(Spacer(8));
+        left.AddChild(Heading("Board difficulty"));
+        var difficulties = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        difficulties.AddThemeConstantOverride("separation", 14);
+        left.AddChild(Spacer(4));
+        left.AddChild(difficulties);
+        float[] difficultyTilts = [-1.6f, 0.8f, 1.4f];
+        for (var i = 0; i < Difficulties.Length; i++)
+        {
+            var note = DifficultyNote(i, difficultyTilts[i], editable);
+            difficulties.AddChild(note.Slot);
+            _difficultyNotes.Add(note);
+        }
+        _difficultyHint = Body("", 15, BingoStyle.PageInkSoft);
+        left.AddChild(_difficultyHint);
         left.AddChild(Spacer(8));
         left.AddChild(Heading("Board seed (optional)"));
         _seed = SeedBox(editable);
@@ -195,13 +219,13 @@ internal sealed class LobbyPanel
         UpdateLabels();
     }
 
-    private void Pick(bool? enabled = null, BingoMode? mode = null)
+    private void Pick(bool? enabled = null, BingoMode? mode = null, BoardDifficulty? difficulty = null)
     {
         if (_role == NetRole.Client)
         {
             return;
         }
-        _shown = _shown with { Enabled = enabled ?? _shown.Enabled, Mode = mode ?? _shown.Mode };
+        _shown = _shown with { Enabled = enabled ?? _shown.Enabled, Mode = mode ?? _shown.Mode, Difficulty = difficulty ?? _shown.Difficulty };
         Changed();
     }
 
@@ -211,7 +235,7 @@ internal sealed class LobbyPanel
         {
             return;
         }
-        _settings.SetSetup(_shown.Enabled, _seed.Text, _shown.Mode);
+        _settings.SetSetup(_shown.Enabled, _seed.Text, _shown.Mode, _shown.Difficulty);
         _shown = _settings.Setup;
         UpdateLabels();
         BingoNet.SendSettings(_shown);
@@ -237,6 +261,17 @@ internal sealed class LobbyPanel
         }
 
         var entry = SeedEntryParser.Parse(setup.SeedEntry);
+        for (var i = 0; i < _difficultyNotes.Count; i++)
+        {
+            var picked = Difficulties[i].Difficulty == setup.Difficulty;
+            var note = _difficultyNotes[i];
+            note.SetBorder(picked ? BingoStyle.Brass : null);
+            note.SetLifted(picked);
+            note.Slot.Modulate = picked ? Colors.White : new Color(1, 1, 1, 0.8f);
+        }
+        _difficultyHint.Text = entry.Kind == SeedEntryKind.Code
+            ? $"The pasted board brings its own difficulty ({entry.Code!.Difficulty})."
+            : Array.Find(Difficulties, d => d.Difficulty == setup.Difficulty).Text;
         (_seedHint.Text, var color) = entry.Kind switch
         {
             SeedEntryKind.Empty => ("Leave this empty to get a board from the run's seed. To play a specific board instead, paste its board seed here. Every board shows its own at the top, as \"Board: ...\".", BingoStyle.PageInkSoft),
@@ -281,6 +316,38 @@ internal sealed class LobbyPanel
                 }
             };
             Gamepad.Focusable(note.Slot, () => Pick(mode: mode));
+        }
+        return note;
+    }
+
+    private PaperNote DifficultyNote(int index, float tilt, bool editable)
+    {
+        var (difficulty, name, shortText, band, _) = Difficulties[index];
+        var note = new PaperNote(new Vector2(104, 60), tilt);
+        note.HideTape();
+        note.SetTag(BingoStyle.Difficulty(band), "", 20);
+        note.SetMargins(left: 6, top: 8, right: 6, bottom: 6);
+        var column = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
+        column.AddThemeConstantOverride("separation", 0);
+        note.Content.AddChild(column);
+        var title = BingoStyle.Ink(name, BingoFonts.Heading, 17, BingoStyle.PageInk);
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        column.AddChild(title);
+        var sub = BingoStyle.Ink(shortText, BingoFonts.Note, 13, BingoStyle.PageInkSoft);
+        sub.HorizontalAlignment = HorizontalAlignment.Center;
+        column.AddChild(sub);
+
+        if (editable)
+        {
+            note.Slot.GuiInput += evt =>
+            {
+                if (evt is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+                {
+                    Pick(difficulty: difficulty);
+                    note.Slot.AcceptEvent();
+                }
+            };
+            Gamepad.Focusable(note.Slot, () => Pick(difficulty: difficulty));
         }
         return note;
     }

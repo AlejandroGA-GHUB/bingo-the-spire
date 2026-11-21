@@ -65,9 +65,9 @@ public class BuiltInGoalsTests
     }
 
     [Fact]
-    public void MediumBoards_HitTheirTargetDifficulties()
+    public void EasyBoards_HitTheirTargetDifficulties()
     {
-        // With the real goal list every medium board should match its layout exactly, not fall
+        // With the real goal list every easy board should match its layout exactly, not fall
         // back to the nearest difficulty, so every line sums to the same total.
         for (var i = 0; i < 200; i++)
         {
@@ -77,6 +77,28 @@ public class BuiltInGoalsTests
                 var board = BoardBuilder.Build(BuiltInGoals.List, new BoardRequest(seed, BingoMode.Versus, gameMode, ["IRONCLAD"]));
                 var totals = BoardRules.Lines(board.Size).Select(l => l.Sum(c => board.Squares[c].Difficulty)).Distinct().ToList();
                 Assert.Single(totals);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(BoardDifficulty.Medium)]
+    [InlineData(BoardDifficulty.Hard)]
+    public void HarderBoards_GetTheirDifficulty5Squares_OnePerLineAtMost(BoardDifficulty difficulty)
+    {
+        for (var i = 0; i < 200; i++)
+        {
+            foreach (var gameMode in new[] { "Standard", "Blitz" })
+            {
+                var board = BoardBuilder.Build(BuiltInGoals.List,
+                    new BoardRequest($"SEED{i:D8}", BingoMode.Versus, gameMode, ["SILENT"], difficulty));
+                var fives = board.Squares.Where(s => s.Difficulty == 5).Select(s => s.Index).ToHashSet();
+                Assert.Equal(BoardRules.HardSquares(board.Size, difficulty), fives.Count);
+                Assert.All(BoardRules.Lines(board.Size), line => Assert.True(line.Count(fives.Contains) <= 1));
+                if (board.Size == 5)
+                {
+                    Assert.Contains(12, fives);
+                }
             }
         }
     }

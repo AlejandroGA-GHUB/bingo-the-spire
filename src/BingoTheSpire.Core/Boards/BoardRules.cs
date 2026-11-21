@@ -34,17 +34,24 @@ public static class BoardRules
 
     /// <summary>
     /// Target difficulty for each band of the layout. Every line has one cell of every band, so
-    /// every line adds up to the same total.
+    /// every line adds up to the same total. The last band is the one difficulty 5 squares replace.
     /// </summary>
-    public static IReadOnlyList<int> DifficultyBands(int size, BoardDifficulty difficulty) => (size, difficulty) switch
+    public static IReadOnlyList<int> DifficultyBands(int size) => size switch
     {
-        (5, BoardDifficulty.Easy) => [1, 1, 2, 2, 3],
-        (5, BoardDifficulty.Medium) => [1, 2, 3, 3, 4],
-        (5, BoardDifficulty.Hard) => [2, 3, 4, 4, 5],
-        (4, BoardDifficulty.Easy) => [1, 1, 2, 3],
-        (4, BoardDifficulty.Medium) => [1, 2, 3, 3],
-        (4, BoardDifficulty.Hard) => [2, 3, 4, 5],
+        5 => [1, 2, 3, 3, 4],
+        4 => [1, 2, 3, 3],
         _ => throw new ArgumentOutOfRangeException(nameof(size), size, "board size must be 4 or 5"),
+    };
+
+    /// <summary>
+    /// How many squares are raised to difficulty 5: none on Easy, the middle one on Medium, and on
+    /// Hard the middle one plus two more (one more on 4×4, which has fewer lines).
+    /// </summary>
+    public static int HardSquares(int size, BoardDifficulty difficulty) => difficulty switch
+    {
+        BoardDifficulty.Easy => 0,
+        BoardDifficulty.Medium => 1,
+        _ => size == 5 ? 3 : 2,
     };
 
     /// <summary>Readable name of a line from <see cref="Lines"/>, e.g. "Row 2", "Column 5", "Diagonal ↘".</summary>
