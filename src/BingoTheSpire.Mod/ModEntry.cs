@@ -47,6 +47,7 @@ public static class ModEntry
             Bingo.SessionStarted += session => Callable.From(() =>
                 BingoOverlay.Current?.Bind(session, Bingo.LocalPlayerId)).CallDeferred();
             Bingo.SessionStopped += () => Callable.From(() => BingoOverlay.Current?.Unbind()).CallDeferred();
+            Bingo.Notice += (title, text) => Callable.From(() => BingoOverlay.Notify(title, text)).CallDeferred();
             Bingo.RunFinished += entry => Callable.From(() => BingoOverlay.Current?.ShowResults(entry)).CallDeferred();
             Events.Subscribe(Bingo.OnEvent);
             Adapter.RunAttaching += Events.Reset;

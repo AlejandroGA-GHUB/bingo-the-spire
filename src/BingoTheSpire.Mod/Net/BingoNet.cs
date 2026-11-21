@@ -148,6 +148,8 @@ internal static class BingoNet
         if (message.ModVersion != ModEntry.Version)
         {
             BingoLog.Warn($"the host has Bingo the Spire v{message.ModVersion}, this game has v{ModEntry.Version}");
+            var text = $"The host has Bingo the Spire v{message.ModVersion}, you have v{ModEntry.Version}. Boards may not match.";
+            Godot.Callable.From(() => Ui.BingoOverlay.Notify("DIFFERENT VERSIONS", text)).CallDeferred();
         }
         var mode = Enum.IsDefined(typeof(BingoMode), message.BingoMode) ? (BingoMode)message.BingoMode : BingoMode.Versus;
         HostSetup = new BingoSetup(message.Enabled, string.IsNullOrEmpty(message.SeedEntry) ? null : message.SeedEntry, mode);

@@ -56,6 +56,11 @@ internal sealed class BingoRuntime
     /// <summary>Raised when bingo turns off partway, e.g. the co-op host has it off.</summary>
     public event Action? SessionStopped;
 
+    /// <summary>Something the player should know (bingo turned off, progress can't be saved, …): a title and a line.</summary>
+    public event Action<string, string>? Notice;
+
+    private void Tell(string title, string text) => Notice?.Invoke(title, text);
+
     /// <summary>A bingo run ended and was written to the history: show the results.</summary>
     public event Action<HistoryEntry>? RunFinished;
 
@@ -135,6 +140,7 @@ internal sealed class BingoRuntime
                 if (header != null && kept.Count == 0 && events.Count > 0)
                 {
                     BingoLog.Warn("saved bingo progress doesn't match this board; starting it fresh");
+                    Tell("BOARD STARTED FRESH", "The saved bingo progress didn't match this run's board, so it starts empty.");
                 }
                 StartSession(run, board, kept);
             }
@@ -144,6 +150,7 @@ internal sealed class BingoRuntime
             _disabled = true;
             CloseJournal(delete: false);
             BingoLog.Error($"couldn't build a board, bingo is off for this run: {ex.Message}");
+            Tell("BINGO IS OFF", "Couldn't build a board for this run. The details are in the game's log.");
         }
 
         if (_role == NetRole.Client)
@@ -159,7 +166,12 @@ internal sealed class BingoRuntime
         var session = new BingoSession(board, BuiltInGoals.List,
             isAuthority: _role != NetRole.Client,
             claimsFor: player => player == local,
-            onDetectorError: (goal, ex) => BingoLog.Error($"detector for '{goal}' failed and is off for this run: {ex}"));
+            onDetectorError: (goal, ex) =>
+            {
+                BingoLog.Error($"detector for '{goal}' failed and is off for this run: {ex}");
+                var text = board.Squares.FirstOrDefault(s => s.GoalId == goal)?.Text ?? goal;
+                Tell("A SQUARE IS STUCK", $"\"{text}\" ran into an error and can't be completed this run.");
+            });
         session.Resolved += result =>
         {
             WriteJournal(result);
@@ -213,6 +225,7 @@ internal sealed class BingoRuntime
         if (modVersion != ModEntry.Version)
         {
             BingoLog.Warn($"player {player} has Bingo the Spire v{modVersion}, the host has v{ModEntry.Version}");
+            Tell("DIFFERENT VERSIONS", $"{Adapter.PlayerName(player)} has Bingo the Spire v{modVersion}, you have v{ModEntry.Version}. Boards may not match.");
         }
         _pendingHellos.Add((player, hash));
         AnswerHellos();
@@ -256,6 +269,7 @@ internal sealed class BingoRuntime
             if (Session != null || !_disabled)
             {
                 BingoLog.Info("the host has bingo off for this run");
+                Tell("BINGO IS OFF", "The host turned bingo off for this run.");
                 StopSession(notify: true);
                 _disabled = true;
                 StartJournal(run, null, []);
@@ -268,12 +282,14 @@ internal sealed class BingoRuntime
             if (!BoardCode.TryParse(boardCode, out var code) || code == null)
             {
                 BingoLog.Error($"the host sent a board code this game can't read ({boardCode}); bingo is off for this run");
+                Tell("BINGO IS OFF", "The host's board code can't be read here. Check you both have the same version of Bingo the Spire.");
                 return;
             }
             var board = BoardBuilder.Build(BuiltInGoals.List, RequestFromCode(run, code), Capabilities());
             if (BoardHash(board) != boardHash)
             {
                 BingoLog.Error($"this game can't build the host's board {boardCode} (different goals available?); bingo is off for this run");
+                Tell("BINGO IS OFF", "This game can't build the host's board. Check you both have the same version of Bingo the Spire and of the game.");
                 StopSession(notify: true);
                 _disabled = true;
                 return;
@@ -382,6 +398,7 @@ internal sealed class BingoRuntime
         {
             CloseJournal(delete: false);
             BingoLog.Error($"couldn't save bingo progress for this run; Continue will start the board fresh: {ex.Message}");
+            Tell("PROGRESS NOT SAVED", "Bingo progress can't be saved for this run: if you quit and Continue, the board starts fresh.");
         }
     }
 
@@ -395,6 +412,7 @@ internal sealed class BingoRuntime
         {
             CloseJournal(delete: false);
             BingoLog.Error($"saving bingo progress failed and is off for this run: {ex.Message}");
+            Tell("PROGRESS NOT SAVED", "Saving bingo progress stopped working: if you quit and Continue, the board starts fresh.");
         }
     }
 
@@ -491,6 +509,7 @@ internal sealed class BingoRuntime
         catch (Exception ex)
         {
             BingoLog.Error($"couldn't save the run to the bingo history: {ex.Message}");
+            Tell("NOT IN HISTORY", "This run couldn't be saved to your bingo history.");
         }
     }
 

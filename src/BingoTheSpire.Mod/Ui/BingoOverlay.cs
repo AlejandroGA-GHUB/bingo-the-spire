@@ -65,6 +65,42 @@ internal sealed class BingoOverlay
 
     public static BingoOverlay? Current { get; private set; }
 
+    /// <summary>Warnings for the player, held until a run's UI exists to show them.</summary>
+    private static readonly List<(string Title, string Text)> PendingNotices = new();
+
+    private static readonly Color Warning = Color.FromHtml("#f0a030");
+
+    /// <summary>Tells the player something went wrong (or changed), as a toast in the run.</summary>
+    public static void Notify(string title, string text)
+    {
+        if (PendingNotices.Contains((title, text)))
+        {
+            return;
+        }
+        PendingNotices.Add((title, text));
+        if (Current is { } overlay && GodotObject.IsInstanceValid(overlay._layer) && overlay._layer.IsInsideTree())
+        {
+            overlay.FlushNotices(0.2);
+        }
+    }
+
+    /// <summary>Shows waiting notices once the run screen has settled.</summary>
+    private void FlushNotices(double delay)
+    {
+        _layer.GetTree().CreateTimer(delay).Timeout += () =>
+        {
+            if (!GodotObject.IsInstanceValid(_layer))
+            {
+                return;
+            }
+            foreach (var (title, text) in PendingNotices)
+            {
+                _toasts.Notice(title, text, Warning);
+            }
+            PendingNotices.Clear();
+        };
+    }
+
     /// <summary>Creates the UI for a run that just appeared on screen.</summary>
     public static void Attach(Node runNode, BingoRuntime runtime, BingoSettings settings)
     {
@@ -84,7 +120,10 @@ internal sealed class BingoOverlay
         }
         var key = BingoHotkey.ActiveKey?.ToString();
         overlay._icon.SetTooltip(key);
-        overlay._board.SetFooter(key != null ? $"{key} to show or hide" : "Hotkey off (settings.json)");
+        var pad = Gamepad.BoardButtonName;
+        overlay._board.SetFooter(key != null ? $"{key}{(pad != null ? $" or {pad}" : "")} to show or hide"
+            : pad != null ? $"{pad} to show or hide" : "Hotkey off (Settings in the lobby)");
+        overlay.FlushNotices(1.5);
 
         if (runtime.Session != null)
         {
