@@ -65,7 +65,7 @@ Before release: ask once in the StS2 modding Discord whether anyone else is buil
 | **The Bingo panel** | An open book (section 4.4). **ON and OFF buttons** (remembered between runs, on by default), the **bingo-seed box**, and in co-op the three **modes as notes to pick from**, with the picked mode explained in plain words on the right-hand page |
 | **Co-op** | Only the **host** sets the bingo options. Other players see them, read-only, and they're sent to them over the game's own co-op connection |
 
-- **The bingo-seed box** takes nothing (the board comes from the run seed), a bingo seed, or a full board code (section 5). The panel says which one it read; a bad entry is shown in red and turns bingo off for that run.
+- **The bingo-seed box** (labelled "Board seed" in the game) takes nothing (the board comes from the run seed), a bingo seed, or a full board code (section 5). The hint leads with the common case: leave it empty for the run's seed, or paste the board seed shown at the top of any board ("Board: ...") to play that board instead. It then says which one it read; a bad entry is shown in red and turns bingo off for that run.
 - The seed entry is **cleared once a run starts with it**, so the next run doesn't quietly reuse the same board. The on/off choice and the co-op mode are remembered.
 - If nothing is set, the board is built from the run seed and the mode is Versus. The board is built when the run starts and stays fixed for that run. With bingo off, the run has no board, no icon, and nothing is tracked.
 
@@ -115,7 +115,7 @@ Rules for every mode:
   - The hotkey defaults to `B`, but **only if no other binding (the game's or another mod's) already uses that key**. If it does, the hotkey starts off and the log says why.
   - Players can set their own key, or turn the hotkey off, in the bingo settings.
 - **Look:** the board and the Bingo panel are an **open book** with curved pages, drawn in code so they're sharp at any resolution. Each square is a **paper note** taped to the page, with its difficulty as a colored corner. Headings use Mochiy Pop One and notes use Mali (both SIL OFL, embedded in the mod).
-- **Your board:** 5×5 grid of notes showing each goal's text, a **DONE** stamp on filled squares (gold when part of a finished line), and **progress on goals in progress** (e.g. "7/10 cards this turn", "Block 38/50"). A brass nameplate shows the score and "Board: code"; the difficulty key runs along the bottom of the page.
+- **Your board:** 5×5 grid of notes showing each goal's text, a **DONE** stamp on filled squares (gold when part of a finished line), and **progress on goals in progress** (e.g. "7/10 cards this turn", "Block 38/50"). A brass nameplate shows the score, "Board: code" and the mode ("Solo" in a one-player run, which plays by Versus rules); the difficulty key runs along the bottom of the page.
   - **Versus:** only your own squares. **Lockout:** squares someone else took are greyed out with "Taken by Sam". **Team:** every filled square is just DONE, whoever filled it.
 - **Teammate previews** (co-op): one small board per teammate showing only which cells are filled. **Clicking one opens that player's full board.** In Lockout and Team, the one shared board shows everyone's colors instead.
 - **Hover details** (filled squares only; the goal text is already on the note): who completed the square (if it wasn't you), on which floor and turn, and the evidence (e.g. "53 Block on turn 4, Act 2 floor 22").

@@ -72,7 +72,8 @@ internal sealed class BoardPanel
     public void Hide() => _book?.Hide();
 
     /// <summary>Builds the book for a board. The book's width depends on the board size, so it's made per board.</summary>
-    public void Build(BingoBoard board)
+    /// <param name="modeName">What to call the mode on the nameplate (e.g. "Solo" for a one-player run).</param>
+    public void Build(BingoBoard board, string modeName)
     {
         var wasVisible = Visible;
         if (_book != null)
@@ -94,7 +95,7 @@ internal sealed class BoardPanel
         info.AddThemeConstantOverride("separation", 0);
         _stats = BingoStyle.Ink("", BingoFonts.NoteBold, 19, BingoStyle.NameplateText);
         info.AddChild(_stats);
-        _code = BingoStyle.Ink($"Board: {board.Code}  ·  {board.Mode}", BingoFonts.NoteBold, 15, BingoStyle.NameplateText with { A = 0.8f });
+        _code = BingoStyle.Ink($"Board: {board.Code}  ·  {modeName}", BingoFonts.NoteBold, 15, BingoStyle.NameplateText with { A = 0.8f });
         info.AddChild(_code);
         content.AddChild(Nameplate("BINGO!", info));
 

@@ -23,7 +23,7 @@ public sealed record BingoSetup(bool Enabled, string? SeedEntry, BingoMode Mode)
                 if (code.GoalListVersion != goalListVersion)
                 {
                     throw new BoardBuildException(
-                        $"board code {SeedEntry} is for goal list v{code.GoalListVersion}, but this version of the mod has v{goalListVersion}");
+                        $"board seed {SeedEntry} is from a different version of Bingo the Spire (goal list v{code.GoalListVersion}; this one uses v{goalListVersion})");
                 }
                 // A code reproduces its board exactly, mode and all.
                 return new BoardRequest(code.SeedText, code.Mode, gameMode, characterIds, code.Difficulty, code.Size);
@@ -59,7 +59,7 @@ public static class SeedEntryParser
         {
             return BoardCode.TryParse(text.Trim(), out var code) && code != null
                 ? new SeedEntry(SeedEntryKind.Code, Code: code)
-                : new SeedEntry(SeedEntryKind.Invalid, Error: $"'{text.Trim()}' isn't a valid board code");
+                : new SeedEntry(SeedEntryKind.Invalid, Error: $"'{text.Trim()}' isn't a board seed. Check it was pasted in full");
         }
         var seed = BingoSeed.Canonicalize(text);
         return BingoSeed.IsValid(seed)

@@ -4,6 +4,7 @@ using BingoTheSpire.Core.Detection;
 using BingoTheSpire.Core.Events;
 using BingoTheSpire.Core.Session;
 using BingoTheSpire.Mod.GameAdapter;
+using BingoTheSpire.Mod.Net;
 
 namespace BingoTheSpire.Mod.Ui;
 
@@ -131,7 +132,9 @@ internal sealed class BingoOverlay
             return;
         }
         var local = _localPlayer;
-        _board.Build(session.Board);
+        // Solo boards are Versus under the hood; call them what they are.
+        var solo = BingoNet.Role == NetRole.Solo || session.State.Players.Count < 2;
+        _board.Build(session.Board, solo ? "Solo" : session.Board.Mode.ToString());
         foreach (var square in Enumerable.Range(0, session.Board.Squares.Count))
         {
             var by = session.State.OwnerOf(square) ?? local;

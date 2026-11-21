@@ -83,7 +83,7 @@ internal sealed class LobbyPanel
         onOff.AddChild(_on);
         onOff.AddChild(_off);
         left.AddChild(Spacer(8));
-        left.AddChild(Heading("Bingo seed"));
+        left.AddChild(Heading("Board seed (optional)"));
         _seed = SeedBox(editable);
         _seed.TextChanged += _ => Changed();
         left.AddChild(_seed);
@@ -233,9 +233,9 @@ internal sealed class LobbyPanel
         var entry = SeedEntryParser.Parse(setup.SeedEntry);
         (_seedHint.Text, var color) = entry.Kind switch
         {
-            SeedEntryKind.Empty => ("The board comes from the run's seed. Type a seed to share a board, or paste a board code to replay one exactly.", BingoStyle.PageInkSoft),
-            SeedEntryKind.Seed => ($"Bingo seed {entry.Seed}: the same seed and characters always give the same board.", BingoStyle.On.Darkened(0.2f)),
-            SeedEntryKind.Code => ($"Board code: rebuilds that exact board ({entry.Code!.Mode}, {entry.Code.Size}×{entry.Code.Size}) if the characters match.", BingoStyle.On.Darkened(0.2f)),
+            SeedEntryKind.Empty => ("Leave this empty to get a board from the run's seed. To play a specific board instead, paste its board seed here. Every board shows its own at the top, as \"Board: ...\".", BingoStyle.PageInkSoft),
+            SeedEntryKind.Seed => ($"Using \"{entry.Seed}\" as the board seed instead of the run's seed. Anyone who types the same thing and plays the same characters gets the same board.", BingoStyle.On.Darkened(0.2f)),
+            SeedEntryKind.Code => ($"Using this board ({entry.Code!.Mode}) instead of the run's seed. Play the same characters to get exactly the same goals.", BingoStyle.On.Darkened(0.2f)),
             _ => (entry.Error + ". Bingo will be off unless this is fixed.", BingoStyle.RedInk),
         };
         _seedHint.AddThemeColorOverride("font_color", color);
@@ -342,7 +342,7 @@ internal sealed class LobbyPanel
     {
         var box = new LineEdit
         {
-            PlaceholderText = "Leave empty to use the run's seed",
+            PlaceholderText = "Empty: board from the run's seed",
             MaxLength = 48,
             Editable = editable,
             CustomMinimumSize = new Vector2(ColumnWidth, 40),
