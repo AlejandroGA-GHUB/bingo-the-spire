@@ -176,12 +176,12 @@ internal static class HistoryBook
     /// <summary>A small square with the difficulty's color in its top-left half, like a note's corner.</summary>
     private static Control DifficultyChip(int difficulty)
     {
-        var chip = new Control { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(16, 16), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
+        var chip = new Control { MouseFilter = Control.MouseFilterEnum.Ignore, TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps, CustomMinimumSize = new Vector2(16, 16), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
         chip.Draw += () =>
         {
             var s = chip.Size;
-            chip.DrawColoredPolygon([Vector2.Zero, new Vector2(s.X, 0), new Vector2(0, s.Y)], BingoStyle.Difficulty(difficulty));
-            chip.DrawColoredPolygon([new Vector2(s.X, 0), s, new Vector2(0, s.Y)], new Color(0, 0, 0, 0.08f));
+            chip.DrawRect(new Rect2(Vector2.Zero, s), new Color(0, 0, 0, 0.08f));
+            PaperNote.DrawTag(chip, s.X, BingoStyle.Difficulty(difficulty));
         };
         return chip;
     }
@@ -344,7 +344,7 @@ internal static class HistoryBook
             Text = text,
             CustomMinimumSize = new Vector2(150, 42),
             SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
-            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            MouseDefaultCursorShape = Control.CursorShape.Arrow, // the game only draws its own cursor for the arrow
         });
         button.AddThemeFontOverride("font", BingoFonts.Heading);
         button.AddThemeFontSizeOverride("font_size", 17);

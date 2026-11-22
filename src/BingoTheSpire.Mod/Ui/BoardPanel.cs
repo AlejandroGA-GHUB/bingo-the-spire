@@ -591,13 +591,12 @@ internal sealed class BoardPanel
         {
             var key = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
             key.AddThemeConstantOverride("separation", 6);
-            var chip = new Control { CustomMinimumSize = new Vector2(22, 22), MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
+            var chip = new Control { CustomMinimumSize = new Vector2(22, 22), MouseFilter = Control.MouseFilterEnum.Ignore, TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
             var color = BingoStyle.Difficulty(d);
             chip.Draw += () =>
             {
-                chip.DrawColoredPolygon([new(0, 0), new(22, 0), new(0, 22)], color);
-                chip.DrawColoredPolygon([new(22, 0), new(22, 22), new(0, 22)], new Color(0, 0, 0, 0.08f));
-                chip.DrawLine(new Vector2(22, 0), new Vector2(0, 22), color, 1.2f, antialiased: true);
+                chip.DrawRect(new Rect2(0, 0, 22, 22), new Color(0, 0, 0, 0.08f));
+                PaperNote.DrawTag(chip, 22, color);
             };
             key.AddChild(chip);
             key.AddChild(BingoStyle.Ink(d switch { 1 => "1 easy", 5 => "5 hard", _ => d.ToString() }, BingoFonts.NoteBold, 17, BingoStyle.PageInkSoft));

@@ -75,9 +75,10 @@ public static class DetectorCatalog
             (e, _) => e is RestSmithed r ? Mine(r.PlayerId) : None, n => $"upgraded at {n} rest sites"),
         ["RestHeals"] = Counter(Scope.Run, [nameof(RestHealed)],
             (e, _) => e is RestHealed r ? Mine(r.PlayerId) : None, n => $"rested at {n} rest sites"),
+        // Near-exact kills: up to 2 damage past the enemy's last HP (Poison and Doom included).
         ["ExactKills"] = Counter(Scope.Run, [nameof(DamageDealt)],
-            (e, ctx) => KillBy(e, ctx) is { Overkill: 0 } k ? Mine(k.Player) : None,
-            n => $"{n} exactly lethal kills"),
+            (e, ctx) => KillBy(e, ctx) is { Overkill: <= 2 } k ? Mine(k.Player) : None,
+            n => $"{n} kills with 2 or less overkill"),
 
         // ---- Single values ------------------------------------------------------------------
         ["BiggestHit"] = Threshold([nameof(DamageDealt)],

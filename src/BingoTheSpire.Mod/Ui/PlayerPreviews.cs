@@ -46,7 +46,7 @@ internal static class PlayerPreviews
         var card = new PanelContainer
         {
             MouseFilter = Control.MouseFilterEnum.Stop,
-            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            MouseDefaultCursorShape = Control.CursorShape.Arrow, // the game only draws its own cursor for the arrow
             CustomMinimumSize = new Vector2(look.Width, 0),
             TooltipText = player.Viewing ? "" : $"Show {player.Name}'s board",
         };

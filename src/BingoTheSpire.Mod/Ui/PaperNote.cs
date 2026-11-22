@@ -41,7 +41,8 @@ internal sealed class PaperNote
         Slot.AddChild(Paper);
         BingoStyle.CenterPivot(Paper);
 
-        _art = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
+        // Filtered with mipmaps, so the corner tag stays smooth however the note is tilted or scaled.
+        _art = new Control { MouseFilter = Control.MouseFilterEnum.Ignore, TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
         _art.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _art.Draw += PaintArt;
         Paper.AddChild(_art);
@@ -107,7 +108,11 @@ internal sealed class PaperNote
     {
         _style.BorderColor = color ?? Colors.Transparent;
         _style.SetBorderWidthAll(color == null ? 0 : width);
+        _border = color == null ? 0 : width;
+        _art.QueueRedraw(); // the spine shading leaves room for the border
     }
+
+    private int _border;
 
     /// <summary>Lifts the note off the page a little (e.g. the picked mode).</summary>
     public void SetLifted(bool lifted)
@@ -132,26 +137,30 @@ internal sealed class PaperNote
         var size = _art.Size;
         if (_onSpine)
         {
-            // Darker toward the middle, like paper bending into the fold.
+            // Darker toward the middle, like paper bending into the fold. A see-through brown, so any
+            // paper color (e.g. a taken square's grey) shows through, kept inside the border so a
+            // picked note on the spine still shows its outline.
+            var fold = Color.FromHtml("#6b4512");
+            Color Shade(float alpha) => new(fold, alpha);
             (float At, Color Color)[] stops =
             [
-                (0f, BingoStyle.Paper), (0.36f, BingoStyle.Paper), (0.46f, Color.FromHtml("#ecdfc0")),
-                (0.5f, Color.FromHtml("#d6c49c")), (0.54f, Color.FromHtml("#ecdfc0")), (0.64f, BingoStyle.Paper), (1f, BingoStyle.Paper),
+                (0f, Shade(0)), (0.36f, Shade(0)), (0.46f, Shade(0.16f)),
+                (0.5f, Shade(0.3f)), (0.54f, Shade(0.16f)), (0.64f, Shade(0)), (1f, Shade(0)),
             ];
+            float b = _border, top = b, bottom = size.Y - b, width = size.X - 2 * b;
             for (var i = 1; i < stops.Length; i++)
             {
-                float x0 = stops[i - 1].At * size.X, x1 = stops[i].At * size.X;
+                float x0 = b + stops[i - 1].At * width, x1 = b + stops[i].At * width;
                 _art.DrawPolygon(
-                    [new(x0, 0), new(x1, 0), new(x1, size.Y), new(x0, size.Y)],
+                    [new(x0, top), new(x1, top), new(x1, bottom), new(x0, bottom)],
                     [stops[i - 1].Color, stops[i].Color, stops[i].Color, stops[i - 1].Color]);
             }
         }
 
         if (_tag is { } tag)
         {
-            Vector2[] corner = [new(0, 0), new(_tagSize, 0), new(0, _tagSize)];
-            _art.DrawColoredPolygon(corner, tag);
-            _art.DrawLine(new Vector2(_tagSize, 0), new Vector2(0, _tagSize), tag, 1.2f, antialiased: true);
+            // One smooth shape: a triangle that follows the paper's rounded corner, with a soft edge.
+            DrawTag(_art, _tagSize, tag);
             if (_tagText.Length > 0)
             {
                 var font = BingoFonts.NoteBold;
@@ -159,6 +168,68 @@ internal sealed class PaperNote
                 _art.DrawString(font, new Vector2(5, 18), _tagText, HorizontalAlignment.Left, -1, 16, Colors.White);
             }
         }
+    }
+
+    private const int MaskScale = 4;
+    private const float MaskPad = 2;
+    private const float CornerRadius = 3;
+    private static readonly Dictionary<int, ImageTexture?> TagMasks = new();
+
+    /// <summary>
+    /// The corner tag's shape as a white mask, drawn 4× larger and shrunk with mipmaps so its edges are
+    /// smooth at any tilt. A transparent margin round it keeps the outer edges soft too (the edge falls
+    /// inside the drawn rectangle, where the filtering smooths it).
+    /// </summary>
+    /// <summary>
+    /// Draws a smooth difficulty triangle in <paramref name="canvas"/>'s top-left corner. The canvas
+    /// should filter with mipmaps (<see cref="CanvasItem.TextureFilterEnum.LinearWithMipmaps"/>).
+    /// </summary>
+    public static void DrawTag(CanvasItem canvas, float size, Color color)
+    {
+        if (TagMask(size) is { } mask)
+        {
+            canvas.DrawTextureRect(mask, new Rect2(-MaskPad, -MaskPad, size + MaskPad, size + MaskPad), false, color);
+        }
+    }
+
+    private static ImageTexture? TagMask(float size)
+    {
+        var key = (int)Math.Round(size);
+        if (TagMasks.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+        ImageTexture? texture = null;
+        try
+        {
+            var n = (int)Math.Ceiling((size + MaskPad) * MaskScale);
+            var image = Image.CreateEmpty(n, n, false, Image.Format.Rgba8);
+            for (var j = 0; j < n; j++)
+            {
+                for (var i = 0; i < n; i++)
+                {
+                    // Texel centre in note pixels, with the paper's corner at (0, 0).
+                    var x = (i + 0.5f) / MaskScale - MaskPad;
+                    var y = (j + 0.5f) / MaskScale - MaskPad;
+                    var inside = x >= 0 && y >= 0 && x + y <= size;
+                    if (inside && x < CornerRadius && y < CornerRadius)
+                    {
+                        var dx = x - CornerRadius;
+                        var dy = y - CornerRadius;
+                        inside = dx * dx + dy * dy <= CornerRadius * CornerRadius;
+                    }
+                    image.SetPixel(i, j, inside ? Colors.White : new Color(1, 1, 1, 0));
+                }
+            }
+            image.GenerateMipmaps();
+            texture = ImageTexture.CreateFromImage(image);
+        }
+        catch (Exception ex)
+        {
+            BingoLog.Warn($"couldn't draw a note's corner tag: {ex.Message}");
+        }
+        TagMasks[key] = texture;
+        return texture;
     }
 
     /// <summary>A rubber stamp (e.g. DONE, PICKED): heading font in a rounded box, tilted.</summary>

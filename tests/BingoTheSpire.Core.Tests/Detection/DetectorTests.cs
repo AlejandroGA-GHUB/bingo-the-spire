@@ -154,8 +154,9 @@ public class DetectorTests
 
     [Theory]
     [InlineData(0, true)]
-    [InlineData(1, false)]
-    public void ExactKills_NeedExactlyZeroOverkill(int overkill, bool counts)
+    [InlineData(2, true)]
+    [InlineData(3, false)]
+    public void ExactKills_AllowUpToTwoOverkill(int overkill, bool counts)
     {
         var s = new Script("ExactKills", 1).Fight();
         s.Hit(Alex, 1, 10, overkill: overkill, died: true);
@@ -566,8 +567,9 @@ public class DetectorTests
 
     [Theory]
     [InlineData(209, 209, true)]
-    [InlineData(250, 209, false)]
-    public void ExactKills_DoomKill_CountsWhenDoomEqualsHp(int doom, int hp, bool counts)
+    [InlineData(211, 209, true)]
+    [InlineData(212, 209, false)]
+    public void ExactKills_DoomKill_CountsWithinTwoOfHp(int doom, int hp, bool counts)
     {
         var script = new Script("ExactKills", 1, Alex, Sam).Fight()
             .Debuff(Sam, 1, "DOOM_POWER", doom, doom)

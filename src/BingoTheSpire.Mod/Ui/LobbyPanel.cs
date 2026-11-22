@@ -27,7 +27,7 @@ internal sealed class LobbyPanel
     [
         (BingoMode.Versus, "Versus", "Own board each",
             "Everyone fills their own copy of the same board. The first player to finish a line wins. If nobody makes a line before the run ends, whoever filled the most squares wins."),
-        (BingoMode.Lockout, "Lockout", "One board, race for squares",
+        (BingoMode.Lockout, "Lockout", "One board, race for it",
             "One shared board. Complete a goal first and the square is yours. The first line wins. If the run ends with no line, whoever has the most squares wins. If someone gets so far ahead that nobody else can catch up on squares or still make a line, they win right away."),
         (BingoMode.Team, "Team", "One board, together",
             "One shared board, filled together. Counts add up across the team, like potions used or cards drawn in a turn, so their numbers are bigger. One-moment goals, like a single big hit, still need one player. There's no winner: see how many squares and lines you can make together."),
@@ -366,6 +366,8 @@ internal sealed class LobbyPanel
         column.AddChild(title);
         var sub = BingoStyle.Ink(shortText, BingoFonts.Note, 15, BingoStyle.PageInkSoft);
         sub.HorizontalAlignment = HorizontalAlignment.Center;
+        // Inside the note's margins, with a little room for its tilt.
+        BingoStyle.FitWidth(sub, BingoFonts.Note, 15, 220 - 12 - 12 - 8);
         column.AddChild(sub);
 
         picked = PaperNote.Stamp("PICKED", BingoStyle.RedInk, 11, -10);
@@ -446,7 +448,7 @@ internal sealed class LobbyPanel
             Position = new Vector2(x, 0),
             Size = new Vector2(SwitchWidth, SwitchHeight),
             Disabled = !editable,
-            MouseDefaultCursorShape = editable ? Control.CursorShape.PointingHand : Control.CursorShape.Arrow,
+            MouseDefaultCursorShape = Control.CursorShape.Arrow, // the game only draws its own cursor for the arrow
         });
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled" })
         {

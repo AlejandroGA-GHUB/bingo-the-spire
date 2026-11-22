@@ -25,7 +25,7 @@ internal static class CopyClip
             IconAlignment = HorizontalAlignment.Center,
             CustomMinimumSize = new Vector2(size + 8, size + 8),
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            MouseDefaultCursorShape = Control.CursorShape.Arrow, // the game only draws its own cursor for the arrow
             Icon = Icon(color),
         };
         button.AddThemeConstantOverride("icon_max_width", size);

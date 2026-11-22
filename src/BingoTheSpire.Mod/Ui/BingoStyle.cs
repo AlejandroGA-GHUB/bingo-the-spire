@@ -116,6 +116,16 @@ internal static class BingoStyle
     }
 
     /// <summary>A flat box with no fill, e.g. to remove a control's default look.</summary>
+    /// <summary>Shrinks a one-line label's font until its text fits <paramref name="width"/> (not below <paramref name="min"/>).</summary>
+    public static void FitWidth(Label label, Font font, int size, float width, int min = 11)
+    {
+        while (size > min && font.GetStringSize(label.Text, HorizontalAlignment.Left, -1, size).X > width)
+        {
+            size--;
+        }
+        label.AddThemeFontSizeOverride("font_size", size);
+    }
+
     public static StyleBoxEmpty Empty(int padding = 0)
     {
         var box = new StyleBoxEmpty();

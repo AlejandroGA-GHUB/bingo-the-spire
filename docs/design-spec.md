@@ -26,7 +26,7 @@ A Slay the Spire 2 mod that puts a **bingo board in every run**. Squares fill in
 StS2 bingo can be played on web boards like Bingosync, where players mark squares themselves. This mod adds:
 - **detection by the game**, so there's no honor system,
 - **the board inside the game**, so there's no second window,
-- **exact-value goals** settled by code (e.g. exact lethal on an elite),
+- **exact-value goals** settled by code (e.g. killing blows with 2 or less overkill),
 - **boards balanced by difficulty**.
 
 ## 3. Goals and non-goals
@@ -216,7 +216,7 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
   - A **turn** is one combat round: the player's turn plus the enemy turn after it. "Draw {n} cards in a turn" includes the opening hand.
   - **Damage** is the full hit as shown in game: HP lost, Block removed and overkill.
   - **Pets** (e.g. Necrobinder's Osty) count for their owner.
-  - **Kills by Poison or Doom** count for the player who last added Poison or Doom to that enemy, including exact kills (209 Doom on an enemy with 209 HP is exactly lethal).
+  - **Kills by Poison or Doom** count for the player who last added Poison or Doom to that enemy, including near-exact kills (209 to 211 Doom on an enemy with 209 HP is 2 or less overkill).
   - **Evidence** uses names as the game shows them ("12 Weak on Fuzzy Wurm Crawler"), in the game's language.
   - **Without losing HP** means the player's HP never went down during the fight, including HP paid for their own cards.
   - **Fights won** (elites, bosses, quick wins) count for every player in the fight. Skipping a fight with the dev console counts as winning it; the mod doesn't police cheats.
@@ -231,7 +231,7 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 
 ### 6.5 First goal list (v1)
 The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (goal list version 6, 44 goals):
-- **39 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy, expensive cards and 3+ cost cards per fight; exhaust, shuffles and created cards; damage per turn, single hits, overkill, exact-lethal kills, kills on the first turn of a fight (counted over the run), hits and kills from one card; Block per turn; flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
+- **39 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy, expensive cards and 3+ cost cards per fight; exhaust, shuffles and created cards; damage per turn, single hits, overkill, killing blows with 2 or less overkill, kills on the first turn of a fight (counted over the run), hits and kills from one card; Block per turn; flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
 - **5 character goals:** Ironclad Strength, Silent Poison, Defect orbs, Necrobinder pet damage and Regent stars.
 - **Not yet possible,** because they need more events from the game: deck and run state (fully upgraded deck, unique cards, number of relics) and time (act cleared within a time limit).
 
@@ -334,7 +334,7 @@ The `id` must never change: the game uses it for its settings and co-op checks, 
 ## 12. Testing
 
 - **Unit:** each detector against recorded and hand-made event logs, including edge cases:
-  - overkill exactly 0 vs 1,
+  - overkill 2 vs 3 (the near-exact kill limit),
   - Block gained then lost in the same turn,
   - a goal completed during the combat that ends the run,
   - co-op events from two players interleaved, to confirm players are tracked separately and numbers are never added across players.
