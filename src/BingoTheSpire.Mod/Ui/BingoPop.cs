@@ -3,8 +3,8 @@ using Godot;
 namespace BingoTheSpire.Mod.Ui;
 
 /// <summary>
-/// The BINGO! pop-up: a white box with an ink outline and a grey checkerboard that keeps drifting
-/// inside it. The letters stamp down one after another; when the last one lands, stars pop around
+/// The BINGO! pop-up: a box with an ink outline, filled with a warm gold glow rising from the bottom
+/// and faint light rays turning slowly behind the letters. The letters stamp down one after another; when the last one lands, stars pop around
 /// the box and the letters bob in a wave. Then it floats up and fades. All drawn in code.
 /// </summary>
 internal static class BingoPop
@@ -15,7 +15,8 @@ internal static class BingoPop
     private const float PadY = 14;
     private const float Corner = 18;
     private const float Border = 4;
-    private const float CheckerCell = 13;
+    private const int Rays = 20;
+    private const double RayTurn = 14; // seconds per full turn
 
     private const double StampStart = 0.12;
     private const double StampStep = 0.085;
@@ -25,8 +26,10 @@ internal static class BingoPop
     private const double Total = 3.3;
 
     private static readonly Color Ink = BingoStyle.PageInk;
-    private static readonly Color CheckerLight = Color.FromHtml("#f6f4ef");
-    private static readonly Color CheckerDark = Color.FromHtml("#e4e1d9");
+    private static readonly Color GlowBottom = Color.FromHtml("#ffe9a8");
+    private static readonly Color GlowMiddle = Color.FromHtml("#fffaf0");
+    private static readonly Color GlowTop = Color.FromHtml("#fffdf8");
+    private static readonly Color RayColor = new(0.965f, 0.769f, 0.267f, 0.14f);
     private static readonly Color LetterOutline = Color.FromHtml("#6b4512");
     private static readonly Color LetterShadow = Color.FromHtml("#3b2508");
     private static readonly Color StarFill = Color.FromHtml("#f6c444");
@@ -78,33 +81,50 @@ internal static class BingoPop
         }
         box.AddChild(shadow);
 
-        // White card that clips the drifting checkerboard to its rounded shape.
-        var card = Panel(Colors.White, size, filled: true);
+        // Card that clips the glow and the turning rays to its rounded shape.
+        var card = Panel(GlowTop, size, filled: true);
         card.ClipChildren = CanvasItem.ClipChildrenMode.AndDraw;
         box.AddChild(card);
 
-        var checker = new Control { MouseFilter = Control.MouseFilterEnum.Ignore, Size = size };
-        var offset = 0f;
-        checker.Draw += () =>
+        // Gold glow rising from the bottom middle: an ellipse 70% of the width and 120% of the height,
+        // gold in the middle, fading to warm white by 60% of the way out.
+        var glow = new Control { MouseFilter = Control.MouseFilterEnum.Ignore, Size = size };
+        glow.Draw += () =>
         {
-            var cell = CheckerCell;
-            var start = offset - cell * 2;
-            for (var y = start; y < size.Y + cell; y += cell)
+            var center = new Vector2(size.X / 2, size.Y);
+            var radius = new Vector2(size.X * 0.7f, size.Y * 1.2f);
+            (float At, Color Color)[] stops = [(0f, GlowBottom), (0.6f, GlowMiddle), (1f, GlowTop)];
+            const int segments = 48;
+            for (var s = 1; s < stops.Length; s++)
             {
-                for (var x = start; x < size.X + cell; x += cell)
+                for (var i = 0; i < segments; i++)
                 {
-                    var odd = ((int)Math.Round((x - start) / cell) + (int)Math.Round((y - start) / cell)) % 2 == 1;
-                    checker.DrawRect(new Rect2(x, y, cell, cell), odd ? CheckerDark : CheckerLight);
+                    float a0 = Mathf.Pi + Mathf.Pi * i / segments, a1 = Mathf.Pi + Mathf.Pi * (i + 1) / segments;
+                    Vector2 Point(float at, float angle) => center + new Vector2(Mathf.Cos(angle) * radius.X, Mathf.Sin(angle) * radius.Y) * at;
+                    glow.DrawPolygon(
+                        [Point(stops[s - 1].At, a0), Point(stops[s].At, a0), Point(stops[s].At, a1), Point(stops[s - 1].At, a1)],
+                        [stops[s - 1].Color, stops[s].Color, stops[s].Color, stops[s - 1].Color]);
                 }
             }
         };
-        card.AddChild(checker);
-        var drift = checker.CreateTween().SetLoops();
-        drift.TweenMethod(Callable.From<float>(v =>
+        card.AddChild(glow);
+
+        // Faint gold rays from the middle of the box, turning slowly.
+        var rays = new Control { MouseFilter = Control.MouseFilterEnum.Ignore, Position = size / 2 };
+        var reach = size.Length();
+        rays.Draw += () =>
         {
-            offset = v;
-            checker.QueueRedraw();
-        }), 0f, CheckerCell * 2, 2.2);
+            for (var i = 0; i < Rays; i++)
+            {
+                var a0 = Mathf.Tau * i / Rays;
+                var a1 = a0 + Mathf.Tau / Rays / 2;
+                rays.DrawColoredPolygon(
+                    [Vector2.Zero, new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * reach, new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * reach],
+                    RayColor);
+            }
+        };
+        card.AddChild(rays);
+        rays.CreateTween().SetLoops().TweenProperty(rays, "rotation", Mathf.Tau, RayTurn).From(0f);
 
         box.AddChild(Panel(Ink, size, filled: false));
         return box;

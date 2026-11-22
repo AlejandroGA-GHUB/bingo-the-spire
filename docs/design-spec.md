@@ -64,7 +64,7 @@ StS2 bingo can be played on web boards like Bingosync, where players mark square
 
 ### 4.2 Solo
 - One board. Squares fill as you complete goals: a toast appears and the square pulses.
-- **Win: the first line** (row, column or diagonal) gets the BINGO! pop-up at the top of the screen: a white box with a drifting grey checkerboard, the letters stamping down one by one, then stars popping around it while the letters bob in a wave, before it floats away. Every later line gets the same. The board marks the line itself with a yellow highlighter swipe through its notes, which keeps the text readable (animated the next time the board is open, if it was closed). After that, the board stays active: **the 2nd, 3rd and later lines are tracked**, with the floor and run time for each.
+- **Win: the first line** (row, column or diagonal) gets the BINGO! pop-up at the top of the screen: a box with a warm gold glow and faint light rays turning slowly behind the letters, the letters stamping down one by one, then stars popping around it while the letters bob in a wave, before it floats away. Every later line gets the same. The board marks the line itself with a yellow highlighter swipe through its notes, which keeps the text readable (animated the next time the board is open, if it was closed). After that, the board stays active: **the 2nd, 3rd and later lines are tracked**, with the floor and run time for each.
 - When the run ends (win or death), the bingo results are recorded. Winning the run and winning the bingo are separate results.
 
 ### 4.3 Co-op: three modes, chosen by the host
