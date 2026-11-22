@@ -1,6 +1,6 @@
 # Bingo the Spire
 
-A **Slay the Spire 2** mod that adds a bingo board to every run.
+A **Slay the Spire 2** mod that adds a bingo board to every run. **[Get it on the Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3843939707)**
 
 Each square is a goal, like *"Have 40+ Block at once"* or *"Defeat a boss without losing HP"*. You don't mark anything yourself: **squares fill in automatically** when you complete them. Finish a row, a column or a diagonal and you get **BINGO!**
 
@@ -60,10 +60,10 @@ Open the bingo button on the character select screen to set things up.
 
 ## Installing
 
-1. Subscribe to **Bingo the Spire** on the Steam Workshop.
+1. Subscribe to **[Bingo the Spire](https://steamcommunity.com/sharedfiles/filedetails/?id=3843939707)** on the Steam Workshop.
 2. Start the game. Bingo is on by default.
 
-To install it by hand instead, put the `BingoTheSpire` folder in the game's `mods` folder.
+To install it by hand instead, download the zip from the [latest release](../../releases/latest) and put the `BingoTheSpire` folder in the game's `mods` folder.
 
 **In co-op, every player needs the mod, on the same version.**
 
