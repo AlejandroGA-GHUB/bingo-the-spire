@@ -47,7 +47,7 @@
       "tiers": [ { "difficulty": 4, "params": { "n": 2 } }, { "difficulty": 5, "params": { "n": 3 } } ] },
 
     // ---- Block, HP and fights -------------------------------------------------------------
-    { "id": "block_in_turn", "text": "Gain {n}+ Block in a single turn", "detector": "BlockInTurn", "tags": ["block"],
+    { "id": "block_in_turn", "text": "Have {n}+ Block at once", "detector": "BlockHeld", "tags": ["block"],
       "tiers": [ { "difficulty": 1, "params": { "n": 25 } }, { "difficulty": 2, "params": { "n": 40 } }, { "difficulty": 3, "params": { "n": 60 } }, { "difficulty": 4, "params": { "n": 90 } } ] },
     { "id": "flawless_elite", "text": "Defeat an elite without losing HP", "detector": "FlawlessElite", "tags": ["flawless", "elites"],
       "tiers": [ { "difficulty": 3 } ] },
@@ -68,7 +68,7 @@
 
     // ---- Powers ---------------------------------------------------------------------------
     { "id": "debuff_variety", "text": "Have {n}+ of your debuffs on one enemy at once", "detector": "DebuffVariety", "tags": ["debuffs"],
-      "tiers": [ { "difficulty": 1, "params": { "n": 2 } }, { "difficulty": 2, "params": { "n": 3 } }, { "difficulty": 3, "params": { "n": 4 } }, { "difficulty": 5, "params": { "n": 5 } } ] },
+      "tiers": [ { "difficulty": 1, "params": { "n": 2 }, "team": { "n": 3 } }, { "difficulty": 2, "params": { "n": 3 }, "team": { "n": 4 } }, { "difficulty": 4, "params": { "n": 4 }, "team": { "n": 5 } } ] },
     { "id": "debuff_stacks", "text": "Put {n}+ stacks of one debuff on a single enemy", "detector": "DebuffStacks", "tags": ["debuffs"],
       "tiers": [ { "difficulty": 1, "params": { "n": 5 } }, { "difficulty": 2, "params": { "n": 10 } }, { "difficulty": 3, "params": { "n": 20 } }, { "difficulty": 4, "params": { "n": 35 } } ] },
     { "id": "buff_variety", "text": "Have {n}+ different buffs at once", "detector": "BuffVariety", "tags": ["buffs"],

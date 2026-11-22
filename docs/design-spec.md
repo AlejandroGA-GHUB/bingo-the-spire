@@ -78,7 +78,7 @@ StS2 bingo can be played on web boards like Bingosync, where players mark square
 Rules for every mode:
 - **Versus and Lockout: a goal is always completed by one player alone.** Numbers are never added up across players: "Gain 50+ Block in a turn" means *one* player gains 50.
 - **Team: counts and amounts add up across the team,** within the goal's own turn, fight or run. "Draw 25+ cards in a single turn" counts both players' draws in the same turn; "Use 9 potions" counts everyone's potions; "Have 1050+ gold" adds every purse.
-  - Pooled goals get bigger numbers: each player after the first adds 75% of the solo number, rounded to a clean value (2 players: 5 → 9, 10 → 18, 20 → 35, 400 → 700).
+  - Pooled goals get bigger numbers: each player after the first adds 75% of the solo number, rounded to a clean value (2 players: 5 → 9, 10 → 18, 20 → 35, 400 → 700). A few goals set their own Team number where that rule doesn't fit. Different debuffs on one enemy is solo +1, since a teammate brings a few new kinds rather than a second set. Near-exact kills are about luck, not something two players build together. Each further player adds the same step again.
   - A tier can set its 2-player number by hand instead (`"team": { "n": 6 }`), for fine-tuning; each further player adds the same step again.
   - **Flawless fights pool too:** every player who wins a normal fight without losing HP adds one, so a fight where both stay clean counts twice.
   - The square goes to whoever's share reached the target.
@@ -133,7 +133,7 @@ Rules for every mode:
 - **Hover details** (filled squares only; the goal text is already on the note): who completed the square (if it wasn't you), on which floor and turn, and the evidence (e.g. "53 Block on turn 4, Act 2 floor 22").
 - **The game's own cursor** stays on screen over the bingo UI: no hand or text cursors, since the game only draws its own arrow.
 - **"One away" marker:** a gently pulsing orange "1 AWAY!" stamp on every square that would finish a line for you (your team in Team). In Lockout, squares that would finish a line for a rival get a red "SAM 1 AWAY" stamp; a line with someone else's square can't be finished, so it never counts. In Versus, each player preview says "1 away!" when that player is.
-- **Activity feed** (co-op): the three newest happenings at the left of the nameplate, e.g. "Sam: Gain 45+ Block in a single turn (floor 22)", "BINGO! Alex, row 2 (floor 18)"; hovering shows the last 12. It's built from the board's results, so it comes back after a Continue.
+- **Activity feed** (co-op): the three newest happenings at the left of the nameplate, e.g. "Sam: Have 45+ Block at once (floor 22)", "BINGO! Alex, row 2 (floor 18)"; hovering shows the last 12. It's built from the board's results, so it comes back after a Continue.
 - **Toasts** for your own completions and important events (a teammate's bingo, a locked square you were working on). A finished square shows a green card with a white "SQUARE COMPLETE!" label sitting on its top edge. Toasts and the BINGO! pop-up wait while a card is still being played (up to 12 seconds), so a long card animation that covers the screen, like a modded character's cinematic, doesn't hide them.
 - **Problems are shown, not just logged:** an amber toast in the run says what happened and what it means, e.g. "BINGO IS OFF: the host turned bingo off for this run", "BOARD STARTED FRESH", "PROGRESS NOT SAVED: if you quit and Continue, the board starts fresh", "A SQUARE IS STUCK" (a goal hit an error and can't be completed this run), "DIFFERENT VERSIONS" between host and player, and "NOT IN HISTORY". Ones raised before the run screen is up wait for it.
 - **Fonts stay ours** when another mod swaps the game's fonts: our text controls carry the marker CznStyleUI checks to leave a control alone.
@@ -172,8 +172,8 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 ```jsonc
 {
   "id": "block_in_turn",
-  "text": "Gain {n}+ Block in a single turn",
-  "detector": "BlockInTurn",          // detector type name
+  "text": "Have {n}+ Block at once",
+  "detector": "BlockHeld",            // detector type name
   "tiers": [                          // parameter values the builder can pick from, and how hard each is (1-5)
     { "difficulty": 1, "params": { "n": 30 } },
     { "difficulty": 2, "params": { "n": 50 } },
@@ -231,7 +231,7 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 
 ### 6.5 First goal list (v1)
 The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (goal list version 6, 44 goals):
-- **39 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy, expensive cards and 3+ cost cards per fight; exhaust, shuffles and created cards; damage per turn, single hits, overkill, killing blows with 2 or less overkill, kills on the first turn of a fight (counted over the run), hits and kills from one card; Block per turn; flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
+- **39 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy, expensive cards and 3+ cost cards per fight; exhaust, shuffles and created cards; damage per turn, single hits, overkill, killing blows with 2 or less overkill, kills on the first turn of a fight (counted over the run), hits and kills from one card; Block held at once (Block kept from earlier turns counts); flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
 - **5 character goals:** Ironclad Strength, Silent Poison, Defect orbs, Necrobinder pet damage and Regent stars.
 - **Not yet possible,** because they need more events from the game: deck and run state (fully upgraded deck, unique cards, number of relics) and time (act cleared within a time limit).
 

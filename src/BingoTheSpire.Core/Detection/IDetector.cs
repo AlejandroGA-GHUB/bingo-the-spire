@@ -14,7 +14,7 @@ public interface IDetector
 /// <summary>Where a detector reports. The tracker ignores reports for players who already completed the goal.</summary>
 public interface IDetectionSink
 {
-    /// <param name="evidence">Short description of what did it, e.g. "53 Block in one turn".</param>
+    /// <param name="evidence">Short description of what did it, e.g. "53 Block at once".</param>
     void Complete(ulong playerId, string evidence);
 
     /// <summary>Progress toward the goal, for the board's "7/10" counters.</summary>

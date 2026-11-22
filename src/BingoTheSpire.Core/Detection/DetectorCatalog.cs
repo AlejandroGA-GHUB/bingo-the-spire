@@ -25,9 +25,6 @@ public static class DetectorCatalog
             (e, _) => e is CardPlayed { CardType: "Attack" } c ? Mine(c.PlayerId) : None, n => $"{n} Attacks in one turn"),
         ["SkillsPlayedInTurn"] = Counter(Scope.Turn, [nameof(CardPlayed)],
             (e, _) => e is CardPlayed { CardType: "Skill" } c ? Mine(c.PlayerId) : None, n => $"{n} Skills in one turn"),
-        ["BlockInTurn"] = Counter(Scope.Turn, [nameof(BlockGained)],
-            (e, _) => e is BlockGained { CreatureKind: CreatureKind.Player, PlayerId: { } p } b ? Mine(p, b.Amount) : None,
-            n => $"{n} Block in one turn"),
         ["DamageInTurn"] = Counter(Scope.Turn, [nameof(DamageDealt)],
             (e, _) => PlayerHitOnEnemy(e) is { } d ? Mine(d.DealerPlayerId!.Value, Total(d)) : None, n => $"{n} damage in one turn"),
         // Over the whole run: every enemy killed on the first turn of its fight counts once.
@@ -114,6 +111,7 @@ public static class DetectorCatalog
         ["QuickWin"] = new([nameof(CombatWon), nameof(CombatStarting)], (p, _) => new QuickWinDetector(N(p))),
         ["LowHpWin"] = new([nameof(HpChanged), nameof(CombatWon)], (p, _) => new LowHpWinDetector(N(p))),
         ["CardHits"] = new([nameof(DamageDealt), nameof(CardPlayed)], (p, _) => new CardHitsDetector(N(p))),
+        ["BlockHeld"] = new([nameof(BlockGained), nameof(CombatStarting)], (p, pooled) => new BlockHeldDetector(N(p), pooled), Pools: true),
         ["CardKills"] = new([nameof(DamageDealt), nameof(CardPlayed)], (p, _) => new CardHitsDetector(N(p), killsOnly: true)),
         ["DebuffVariety"] = new([nameof(PowerChanged), nameof(CombatStarting)],
             (p, pooled) => new DebuffVarietyDetector(N(p), pooled), Pools: true),

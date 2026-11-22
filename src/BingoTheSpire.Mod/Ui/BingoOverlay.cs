@@ -378,7 +378,7 @@ internal sealed class BingoOverlay
     }
 
     /// <summary>
-    /// Co-op activity feed, newest first: "Sam: Gain 45+ Block in a single turn (floor 22)",
+    /// Co-op activity feed, newest first: "Sam: Have 45+ Block at once (floor 22)",
     /// "BINGO! Alex, row 2 (floor 18)". Built from the board's state, so it survives a Continue.
     /// </summary>
     private List<string> Feed()

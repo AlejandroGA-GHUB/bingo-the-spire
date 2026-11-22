@@ -323,7 +323,7 @@ internal static class Adapter
             CardName: Shown(() => play.Card.Title)));
 
     public static void OnBlockGained(Creature creature, decimal amount, CardModel? cardSource) =>
-        Publish(new BlockGained(PlayerIdOf(creature), KindOf(creature), creature.CombatId, ToInt(amount), cardSource?.Id.Entry));
+        Publish(new BlockGained(PlayerIdOf(creature), KindOf(creature), creature.CombatId, ToInt(amount), cardSource?.Id.Entry, creature.Block));
 
     public static void OnDamageGiven(Creature? dealer, DamageResult result, Creature target, CardModel? cardSource) =>
         Publish(new DamageDealt(

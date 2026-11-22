@@ -118,7 +118,7 @@ public class DetectorTests
     [Fact]
     public void CoOp_PlayersAreCountedSeparately_NeverAddedTogether()
     {
-        var s = new Script("BlockInTurn", 50, Alex, Sam).Fight();
+        var s = new Script("BlockHeld", 50, Alex, Sam).Fight();
         s.Block(Alex, 30).Block(Sam, 30).Block(Alex, 15).Block(Sam, 19);
         Assert.Empty(s.Completions); // 45 + 49, not 94
         s.Block(Sam, 1);
@@ -145,9 +145,31 @@ public class DetectorTests
     }
 
     [Fact]
+    public void BlockHeld_CountsBlockKeptFromEarlierTurns()
+    {
+        var s = new Script("BlockHeld", 50).Fight();
+        s.Send(new BlockGained(Alex, CreatureKind.Player, 0, 30, "DEFEND", Total: 30));
+        s.NextRound().Send(new BlockGained(Alex, CreatureKind.Player, 0, 15, "DEFEND", Total: 45));
+        Assert.Empty(s.Completions);
+        s.Send(new BlockGained(Alex, CreatureKind.Player, 0, 5, "DEFEND", Total: 50)); // 30 kept + 20 this turn
+        Assert.Equal("50 Block at once", Assert.Single(s.Completions).Evidence);
+    }
+
+    [Fact]
+    public void BlockHeld_Team_AddsUpThePlayersBlockThisTurn()
+    {
+        var s = new Script(BingoMode.Team, "BlockHeld", 60, Alex, Sam).Fight();
+        s.Send(new BlockGained(Alex, CreatureKind.Player, 0, 30, "DEFEND", Total: 30));
+        s.NextRound().Send(new BlockGained(Sam, CreatureKind.Player, 0, 30, "DEFEND", Total: 30));
+        Assert.Empty(s.Completions); // Alex's 30 was last turn's
+        s.Send(new BlockGained(Alex, CreatureKind.Player, 0, 5, "DEFEND", Total: 35));
+        Assert.Equal([Alex], s.Winners);
+    }
+
+    [Fact]
     public void BlockFromEnemies_DoesNotCount()
     {
-        var s = new Script("BlockInTurn", 10).Fight();
+        var s = new Script("BlockHeld", 10).Fight();
         s.Send(new BlockGained(null, CreatureKind.Enemy, 3, 20, null));
         Assert.Empty(s.Completions);
     }
@@ -493,13 +515,16 @@ public class DetectorTests
         // One Ironclad or two build the same goals (the seed uses each character once), so only the numbers differ.
         var one = BoardBuilder.Build(BuiltInGoals.List, new BoardRequest("TEAMSEED", BingoMode.Team, "Standard", ["IRONCLAD"]));
         var two = BoardBuilder.Build(BuiltInGoals.List, new BoardRequest("TEAMSEED", BingoMode.Team, "Standard", ["IRONCLAD", "IRONCLAD"]));
-        var detectors = BuiltInGoals.List.Goals.ToDictionary(g => g.Id, g => g.Detector);
+        var goals = BuiltInGoals.List.Goals.ToDictionary(g => g.Id);
         foreach (var (solo, team) in one.Squares.Zip(two.Squares))
         {
             Assert.Equal(solo.GoalId, team.GoalId);
-            if (DetectorCatalog.Pools(detectors[solo.GoalId]) && solo.Params.TryGetValue("n", out var n))
+            if (DetectorCatalog.Pools(goals[solo.GoalId].Detector) && solo.Params.TryGetValue("n", out var n))
             {
-                Assert.Equal(BoardBuilder.TeamTarget(n, 2), team.Params["n"]);
+                // A hand-set Team number wins over the usual +75%.
+                var tier = goals[solo.GoalId].Tiers.First(t => t.Params != null && t.Params.TryGetValue("n", out var v) && v == n);
+                var expected = tier.Team != null && tier.Team.TryGetValue("n", out var set) ? set : BoardBuilder.TeamTarget(n, 2);
+                Assert.Equal(expected, team.Params["n"]);
                 Assert.Contains(team.Params["n"].ToString(System.Globalization.CultureInfo.InvariantCulture), team.Text);
             }
             else

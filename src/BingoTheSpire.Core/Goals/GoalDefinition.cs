@@ -5,7 +5,7 @@ namespace BingoTheSpire.Core.Goals;
 /// values (tiers) the board builder can pick from. See spec section 6.1.
 /// </summary>
 /// <param name="Id">Stable id. Never reuse an id for a different goal: board codes depend on it.</param>
-/// <param name="Text">Template shown on the square, e.g. "Gain {n}+ Block in a single turn".</param>
+/// <param name="Text">Template shown on the square, e.g. "Have {n}+ Block at once".</param>
 /// <param name="Detector">Name of the detector type that checks this goal.</param>
 /// <param name="Tiers">Parameter values and how hard each is. At least one, even for goals without parameters.</param>
 /// <param name="Tags">Topics. Goals sharing a tag are kept out of the same line when possible.</param>

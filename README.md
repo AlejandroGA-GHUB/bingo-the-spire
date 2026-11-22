@@ -2,7 +2,7 @@
 
 A **Slay the Spire 2** mod that adds a bingo board to every run.
 
-Each square is a goal, like *"Gain 40+ Block in a single turn"* or *"Defeat a boss without losing HP"*. You don't mark anything yourself: **squares fill in automatically** when you complete them. Finish a row, a column or a diagonal and you get **BINGO!**
+Each square is a goal, like *"Have 40+ Block at once"* or *"Defeat a boss without losing HP"*. You don't mark anything yourself: **squares fill in automatically** when you complete them. Finish a row, a column or a diagonal and you get **BINGO!**
 
 <p align="center">
   <img src="docs/images/board.png" alt="The bingo board during a run: 25 goals on paper notes in an open book" width="760">

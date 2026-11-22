@@ -57,7 +57,7 @@ public class SeedAndCodeTests
                 {
                   "id": "block_in_turn",
                   "text": "Gain {n}+ Block in a single turn",
-                  "detector": "BlockInTurn",
+                  "detector": "BlockHeld",
                   "tiers": [ { "difficulty": 1, "params": { "n": 30 } }, { "difficulty": 3, "params": { "n": 60 } } ],
                   "tags": ["block"],
                   "requires": { "events": ["BlockGained"] },

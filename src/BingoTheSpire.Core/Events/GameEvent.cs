@@ -141,7 +141,8 @@ public sealed record Shuffled(ulong PlayerId) : GameEvent;
 // same kind (e.g. four Phantasmal Gardeners) can be told apart. Ids restart in every combat.
 
 /// <param name="PlayerId">The player who gained Block, or whose pet did (see <c>CreatureKind</c>).</param>
-public sealed record BlockGained(ulong? PlayerId, string CreatureKind, uint? CombatId, int Amount, string? CardId) : GameEvent;
+/// <param name="Total">The creature's Block right after the gain, kept Block included. Missing in older journals.</param>
+public sealed record BlockGained(ulong? PlayerId, string CreatureKind, uint? CombatId, int Amount, string? CardId, int? Total = null) : GameEvent;
 
 /// <param name="DealerKind">A <see cref="CreatureKind"/> value; "none" for damage with no dealer, such as Poison.</param>
 /// <param name="Overkill">Damage beyond what was needed to kill. 0 on an exact kill.</param>

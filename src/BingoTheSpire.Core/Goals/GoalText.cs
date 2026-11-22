@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace BingoTheSpire.Core.Goals;
 
 /// <summary>
-/// Fills goal templates like "Gain {n}+ Block in a single turn". <c>{s}</c> is a plural ending that
+/// Fills goal templates like "Have {n}+ Block at once". <c>{s}</c> is a plural ending that
 /// follows <c>{n}</c>: "Remove {n} card{s}" reads "Remove 1 card" and "Remove 2 cards".
 /// </summary>
 public static partial class GoalText

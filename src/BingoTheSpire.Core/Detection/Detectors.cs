@@ -80,6 +80,43 @@ public sealed class CounterDetector(
 }
 
 /// <summary>
+/// "Have {n}+ Block at once": a player's Block right after they gain some, so Block kept from
+/// earlier turns counts. In Team, the players' Block this turn is added together.
+/// </summary>
+public sealed class BlockHeldDetector(int target, bool pooled = false) : IDetector
+{
+    // Each player's Block after their last gain, and the turn it was in.
+    private readonly Dictionary<ulong, (long Turn, int Block)> _held = new();
+
+    public void Handle(GameEvent evt, DetectionContext context, IDetectionSink sink)
+    {
+        if (evt is CombatStarting)
+        {
+            _held.Clear();
+            return;
+        }
+        if (evt is not BlockGained { CreatureKind: CreatureKind.Player, PlayerId: { } player } gain || gain.Amount <= 0
+            || context.ScopeKey(Scope.Turn) is not { } turn)
+        {
+            return;
+        }
+        // Older journals have no total: fall back to adding up this turn's gains.
+        var earlier = _held.TryGetValue(player, out var h) && h.Turn == turn ? h.Block : 0;
+        _held[player] = (turn, gain.Total ?? earlier + gain.Amount);
+
+        var value = pooled ? _held.Values.Where(v => v.Turn == turn).Sum(v => v.Block) : _held[player].Block;
+        foreach (var member in Pool.Members(context, pooled ? Pool.Team : player, player))
+        {
+            sink.Progress(member, Math.Min(value, target), target);
+        }
+        if (value >= target)
+        {
+            sink.Complete(player, Pool.Evidence(pooled, $"{value} Block at once"));
+        }
+    }
+}
+
+/// <summary>
 /// "Reach {n} in one go": completes when a single measured value reaches the target. Progress
 /// shows the best so far in the current fight.
 /// </summary>
