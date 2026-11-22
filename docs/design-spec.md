@@ -134,7 +134,7 @@ Rules for every mode:
 - **The game's own cursor** stays on screen over the bingo UI: no hand or text cursors, since the game only draws its own arrow.
 - **"One away" marker:** a gently pulsing orange "1 AWAY!" stamp on every square that would finish a line for you (your team in Team). In Lockout, squares that would finish a line for a rival get a red "SAM 1 AWAY" stamp; a line with someone else's square can't be finished, so it never counts. In Versus, each player preview says "1 away!" when that player is.
 - **Activity feed** (co-op): the three newest happenings at the left of the nameplate, e.g. "Sam: Have 45+ Block at once (floor 22)", "BINGO! Alex, row 2 (floor 18)"; hovering shows the last 12. It's built from the board's results, so it comes back after a Continue.
-- **Toasts** for your own completions and important events (a teammate's bingo, a locked square you were working on). A finished square shows a green card with a white "SQUARE COMPLETE!" label sitting on its top edge. Toasts and the BINGO! pop-up wait while a card is still being played (up to 12 seconds), so a long card animation that covers the screen, like a modded character's cinematic, doesn't hide them.
+- **Toasts** for your own completions and important events (a teammate's bingo, a locked square you were working on). A finished square shows a green card with a white "SQUARE COMPLETE!" label sitting on its top edge, the goal, and under it who did it and what counted (e.g. "Sam: Spent 5 energy in one turn"), in solo too. Toasts and the BINGO! pop-up wait while a card is still being played (up to 12 seconds), so a long card animation that covers the screen, like a modded character's cinematic, doesn't hide them.
 - **Problems are shown, not just logged:** an amber toast in the run says what happened and what it means, e.g. "BINGO IS OFF: the host turned bingo off for this run", "BOARD STARTED FRESH", "PROGRESS NOT SAVED: if you quit and Continue, the board starts fresh", "A SQUARE IS STUCK" (a goal hit an error and can't be completed this run), "DIFFERENT VERSIONS" between host and player, and "NOT IN HISTORY". Ones raised before the run screen is up wait for it.
 - **Fonts stay ours** when another mod swaps the game's fonts: our text controls carry the marker CznStyleUI checks to leave a control alone.
 - **The bingo button is a mini-board:** filled squares green, squares in a finished line gold. In the lobby it carries an ON or OFF badge. It can be dragged anywhere; right-click (or Settings) puts it back by the run timer.
@@ -230,7 +230,7 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 - If another mod changes the game so much that a goal can never be completed, that's acceptable. That should be rare, and it's the player's choice to combine those mods.
 
 ### 6.5 First goal list (v1)
-The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (goal list version 6, 44 goals):
+The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (goal list version 7, 44 goals):
 - **39 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy, expensive cards and 3+ cost cards per fight; exhaust, shuffles and created cards; damage per turn, single hits, overkill, killing blows with 2 or less overkill, kills on the first turn of a fight (counted over the run), hits and kills from one card; Block held at once (Block kept from earlier turns counts); flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
 - **5 character goals:** Ironclad Strength, Silent Poison, Defect orbs, Necrobinder pet damage and Regent stars.
 - **Not yet possible,** because they need more events from the game: deck and run state (fully upgraded deck, unique cards, number of relics) and time (act cleared within a time limit).
@@ -314,7 +314,7 @@ Manifest (`BingoTheSpire.json`):
   "name": "Bingo the Spire",
   "author": "Texin",
   "description": "In-game bingo boards for solo and co-op runs. Squares complete automatically as the game detects each goal.",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "has_dll": true,
   "has_pck": false,
   "affects_gameplay": true,

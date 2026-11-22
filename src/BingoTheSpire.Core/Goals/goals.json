@@ -3,7 +3,7 @@
 // retuning goals, tiers or tags). Never reuse an id for a different goal.
 // Difficulty: 1 = happens in most runs, 3 = needs some planning, 5 = rare.
 {
-  "version": 6,
+  "version": 7,
   "goals": [
     // ---- Cards ----------------------------------------------------------------------------
     { "id": "cards_in_turn", "text": "Play {n}+ cards in a single turn", "detector": "CardsPlayedInTurn", "tags": ["cards-per-turn"],

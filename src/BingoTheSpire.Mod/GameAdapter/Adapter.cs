@@ -164,6 +164,26 @@ internal static class Adapter
         }
     }
 
+    /// <summary>Your own display name (your Steam name), also in solo where there's no co-op session; "You" if unknown.</summary>
+    public static string LocalPlayerName()
+    {
+        try
+        {
+            var platform = MegaCrit.Sts2.Core.Platform.PlatformUtil.PrimaryPlatform;
+            var id = MegaCrit.Sts2.Core.Platform.PlatformUtil.GetLocalPlayerId(platform);
+            var name = MegaCrit.Sts2.Core.Platform.PlatformUtil.GetPlayerNameRaw(platform, id);
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                return name;
+            }
+        }
+        catch (Exception ex)
+        {
+            LogOnce("localname", $"couldn't look up your name: {ex.Message}");
+        }
+        return "You";
+    }
+
     /// <summary>A player's display name (Steam name in co-op), or "Player N" if it can't be found.</summary>
     public static string PlayerName(ulong playerId)
     {
@@ -171,7 +191,8 @@ internal static class Adapter
         {
             if (CurrentNetService() is { } service)
             {
-                var name = MegaCrit.Sts2.Core.Platform.PlatformUtil.GetPlayerName(service.Platform, playerId);
+                // Raw: our labels are plain text, so BBCode escaping would show up in names with brackets.
+                var name = MegaCrit.Sts2.Core.Platform.PlatformUtil.GetPlayerNameRaw(service.Platform, playerId);
                 if (!string.IsNullOrWhiteSpace(name))
                 {
                     return name;

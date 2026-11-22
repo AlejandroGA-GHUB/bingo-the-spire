@@ -481,7 +481,9 @@ internal sealed class BingoOverlay
             return; // a whole row from the dev console: only the BINGO! should show
         }
 #endif
-        _toasts.Square(goal, (mine ? "" : $"{Name(filled.PlayerId)}: ") + Capitalize(c.Evidence));
+        // Always with who did it, so the line under the goal says more than the goal again.
+        var who = mine ? Adapter.LocalPlayerName() : Name(filled.PlayerId);
+        _toasts.Square(goal, $"{who}: {Capitalize(c.Evidence)}");
     });
 
     private void ShowLine(LineCompleted line) => Deferred(() =>

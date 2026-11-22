@@ -118,11 +118,13 @@ internal sealed class PaperNote
     public void SetLifted(bool lifted)
     {
         var lift = lifted && !_onSpine;
+        // Small notes (e.g. difficulty choices) lift half as far, or they look like they float away.
+        var small = Slot.CustomMinimumSize.Y < 80;
         Paper.Rotation = lift || _onSpine ? 0 : _tilt;
-        Paper.Scale = lift ? new Vector2(1.04f, 1.04f) : Vector2.One;
-        Paper.Position = lift ? new Vector2(0, -4) : Vector2.Zero;
-        _style.ShadowSize = lift ? 10 : 6;
-        _style.ShadowOffset = lift ? new Vector2(0, 8) : new Vector2(0, _onSpine ? 3 : 4);
+        Paper.Scale = lift ? new Vector2(small ? 1.02f : 1.04f, small ? 1.02f : 1.04f) : Vector2.One;
+        Paper.Position = lift ? new Vector2(0, small ? -2 : -4) : Vector2.Zero;
+        _style.ShadowSize = lift ? (small ? 8 : 10) : 6;
+        _style.ShadowOffset = lift ? new Vector2(0, small ? 6 : 8) : new Vector2(0, _onSpine ? 3 : 4);
         PlaceTape();
     }
 
@@ -137,15 +139,16 @@ internal sealed class PaperNote
         var size = _art.Size;
         if (_onSpine)
         {
-            // Darker toward the middle, like paper bending into the fold. A see-through brown, so any
-            // paper color (e.g. a taken square's grey) shows through, kept inside the border so a
-            // picked note on the spine still shows its outline.
-            var fold = Color.FromHtml("#6b4512");
+            // Darker toward the middle, like paper bending into the fold. A see-through warm tan (on
+            // white paper it gives the fold's original #ecdfc0 / #d6c49c), so any paper color, e.g. a
+            // taken square's grey, shows through. Kept inside the border so a picked note on the spine
+            // still shows its outline.
+            var fold = Color.FromHtml("#98701c");
             Color Shade(float alpha) => new(fold, alpha);
             (float At, Color Color)[] stops =
             [
-                (0f, Shade(0)), (0.36f, Shade(0)), (0.46f, Shade(0.16f)),
-                (0.5f, Shade(0.3f)), (0.54f, Shade(0.16f)), (0.64f, Shade(0)), (1f, Shade(0)),
+                (0f, Shade(0)), (0.36f, Shade(0)), (0.46f, Shade(0.2f)),
+                (0.5f, Shade(0.4f)), (0.54f, Shade(0.2f)), (0.64f, Shade(0)), (1f, Shade(0)),
             ];
             float b = _border, top = b, bottom = size.Y - b, width = size.X - 2 * b;
             for (var i = 1; i < stops.Length; i++)

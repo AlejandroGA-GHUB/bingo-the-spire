@@ -479,13 +479,18 @@ internal sealed class BoardPanel
             var start = first.Position + first.Size / 2;
             var end = last.Position + last.Size / 2;
             var direction = (end - start).Normalized();
-            // Reach to just inside the end notes' edges, whichever way the line runs (rows, columns, diagonals).
-            var toEdgeX = Math.Abs(direction.X) > 0.001f ? first.Size.X / 2 / Math.Abs(direction.X) : float.MaxValue;
-            var toEdgeY = Math.Abs(direction.Y) > 0.001f ? first.Size.Y / 2 / Math.Abs(direction.Y) : float.MaxValue;
-            var reach = Math.Min(toEdgeX, toEdgeY) - 10;
+            var across = new Vector2(-direction.Y, direction.X);
+            // Reach as far as the stroke's whole width (and its wave) stays 10 px inside the end
+            // notes, whichever way the line runs. On a diagonal that stops short of the corner, so
+            // the thick stroke doesn't poke out past it.
+            var half = HighlighterWidth / 2 + 4;
+            var roomX = first.Size.X / 2 - 10 - Math.Abs(across.X) * half;
+            var roomY = first.Size.Y / 2 - 10 - Math.Abs(across.Y) * half;
+            var toEdgeX = Math.Abs(direction.X) > 0.001f ? roomX / Math.Abs(direction.X) : float.MaxValue;
+            var toEdgeY = Math.Abs(direction.Y) > 0.001f ? roomY / Math.Abs(direction.Y) : float.MaxValue;
+            var reach = Math.Max(0, Math.Min(toEdgeX, toEdgeY));
             start -= direction * reach;
             end += direction * reach;
-            var across = new Vector2(-direction.Y, direction.X);
 
             const int steps = 48;
             var count = Math.Max(2, (int)Math.Ceiling(steps * drawn) + 1);
