@@ -135,6 +135,22 @@ internal static class Adapter
     }
 
     /// <summary>The game's connection for the current run: solo, or the co-op host's or client's.</summary>
+    /// <summary>
+    /// True while a card is being played. Cards can play long animations first (e.g. a modded
+    /// character's cinematic covering the screen), so the bingo pop-ups wait for them to finish.
+    /// </summary>
+    public static bool CardPlaying()
+    {
+        try
+        {
+            return RunManager.Instance?.ActionExecutor?.CurrentlyRunningAction?.GetType().Name == "PlayCardAction";
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public static MegaCrit.Sts2.Core.Multiplayer.Game.INetGameService? CurrentNetService()
     {
         try

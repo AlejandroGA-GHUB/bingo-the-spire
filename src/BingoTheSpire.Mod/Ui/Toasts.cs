@@ -1,11 +1,68 @@
 using Godot;
+using BingoTheSpire.Mod.GameAdapter;
 
 namespace BingoTheSpire.Mod.Ui;
 
-/// <summary>Pop-ups at the top of the screen: a green card for a square, the BINGO! pop-up for a line.</summary>
+/// <summary>
+/// Pop-ups at the top of the screen: a green card for a square, the BINGO! pop-up for a line.
+/// While a card is still being played they wait (up to <see cref="MaxWait"/> seconds), so a long
+/// card animation that covers the screen doesn't hide them.
+/// </summary>
 internal sealed class Toasts
 {
+    private const double MaxWait = 12;
+
     private readonly VBoxContainer _stack;
+    private readonly Queue<Action> _held = new();
+    private double _heldSince;
+    private bool _watching;
+
+    /// <summary>Runs <paramref name="show"/> now, or once the card being played has finished.</summary>
+    private void Post(Action show)
+    {
+        if (_held.Count == 0 && !Adapter.CardPlaying())
+        {
+            show();
+            return;
+        }
+        if (_held.Count == 0)
+        {
+            _heldSince = Time.GetTicksMsec() / 1000.0;
+        }
+        _held.Enqueue(show);
+        if (!_watching && Engine.GetMainLoop() is SceneTree tree)
+        {
+            _watching = true;
+            tree.ProcessFrame += Release;
+        }
+    }
+
+    private void Release()
+    {
+        try
+        {
+            var waited = Time.GetTicksMsec() / 1000.0 - _heldSince;
+            if (_held.Count > 0 && Adapter.CardPlaying() && waited < MaxWait && GodotObject.IsInstanceValid(_stack))
+            {
+                return;
+            }
+            if (Engine.GetMainLoop() is SceneTree tree)
+            {
+                tree.ProcessFrame -= Release;
+            }
+            _watching = false;
+            while (_held.Count > 0 && GodotObject.IsInstanceValid(_stack))
+            {
+                _held.Dequeue()();
+            }
+            _held.Clear();
+        }
+        catch (Exception ex)
+        {
+            _held.Clear();
+            BingoLog.Warn($"couldn't show a bingo pop-up: {ex.Message}");
+        }
+    }
 
     public Toasts(Control parent)
     {
@@ -19,7 +76,9 @@ internal sealed class Toasts
     }
 
     /// <summary>A square was filled: a green card with a white "SQUARE COMPLETE!" label on its top edge.</summary>
-    public void Square(string goal, string evidence)
+    public void Square(string goal, string evidence) => Post(() => ShowSquare(goal, evidence));
+
+    private void ShowSquare(string goal, string evidence)
     {
         // The label overlaps the card's top edge, drawn on top of it.
         var toast = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -64,13 +123,15 @@ internal sealed class Toasts
     }
 
     /// <summary>A line was made: the BINGO! pop-up (see <see cref="BingoPop"/>). The board marks which line.</summary>
-    public void Bingo() => BingoPop.Play(_stack);
+    public void Bingo() => Post(() => BingoPop.Play(_stack));
 
     /// <summary>Accent for other players' moves in Lockout.</summary>
     public static readonly Color Rival = new(0.95f, 0.42f, 0.5f);
 
     /// <summary>A plain announcement: a title in the accent color and a line of text.</summary>
-    public void Notice(string title, string text, Color accent, bool big = false)
+    public void Notice(string title, string text, Color accent, bool big = false) => Post(() => ShowNotice(title, text, accent, big));
+
+    private void ShowNotice(string title, string text, Color accent, bool big)
     {
         var card = Card(accent.Darkened(0.72f) with { A = 0.97f }, accent, accent with { A = 0.45f }, big ? 26 : 16);
         var column = Column(card);
