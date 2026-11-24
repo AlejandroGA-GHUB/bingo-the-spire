@@ -85,6 +85,7 @@ Rules for every mode:
   - **Not pooled** (one moment for one person): single hits, overkill, card cost, surviving one big hit, quick wins, low-HP wins, Strength, buff stacks and different buffs at once. Elites and bosses defeated already count for everyone in the fight.
   - **Progress is the team's:** every player's board shows the same bars. For goals that don't pool, that's the best any player has so far (a teammate's 4/10 shows on your board too).
 - In Versus and Lockout, the board only uses goals that **every** player's character can complete. In Team, a character's goals can appear if **anyone** is playing that character. Modded characters only get the general goals (section 6.4).
+- **Lockout leaves out goals every player completes at the same moment:** elites defeated, bosses defeated and quick wins (a fight ends for everyone at once). Nobody could win those squares, so the host would always get them. The detector catalog marks these as `Shared`, so new goals built the same way are left out too. Versus and Team keep them.
 - Lockout can be used to block other players (including taking the kill on an elite). That's part of the mode, and players choose it on purpose. Versus is the default for that reason.
 - If a player leaves or disconnects, their squares stay theirs. When they come back, they get the current board (section 7).
 
@@ -230,7 +231,7 @@ Each goal in the goal list is a **template plus parameters**, so difficulty can 
 - If another mod changes the game so much that a goal can never be completed, that's acceptable. That should be rare, and it's the player's choice to combine those mods.
 
 ### 6.5 First goal list (v1)
-The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (goal list version 7, 44 goals):
+The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (goal list version 8, 44 goals):
 - **39 general goals**, which count modded content: cards, Attacks and Skills per turn; Powers per fight; draw, energy, expensive cards and 3+ cost cards per fight; exhaust, shuffles and created cards; damage per turn, single hits, overkill, killing blows with 2 or less overkill, kills on the first turn of a fight (counted over the run), hits and kills from one card; Block held at once (Block kept from earlier turns counts); flawless elites, bosses and normal fights; quick wins, low-HP wins and surviving big hits; elites and bosses defeated; debuff variety and stacks, buff variety and stacks; potions per fight and per run; shop sprees, relics bought and card removals; gold held; rest-site upgrades and rests.
 - **5 character goals:** Ironclad Strength, Silent Poison, Defect orbs, Necrobinder pet damage and Regent stars.
 - **Not yet possible,** because they need more events from the game: deck and run state (fully upgraded deck, unique cards, number of relics) and time (act cleared within a time limit).

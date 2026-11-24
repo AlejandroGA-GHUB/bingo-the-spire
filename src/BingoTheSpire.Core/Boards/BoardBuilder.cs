@@ -183,6 +183,7 @@ public static class BoardBuilder
     /// <summary>
     /// Goals this run can use, sorted by id so the result never depends on file order.
     /// In Versus and Lockout a character goal needs every player on that character; in Team, any one.
+    /// Lockout leaves out goals every player completes at the same moment: nobody could win those squares.
     /// </summary>
     public static List<GoalDefinition> EligibleGoals(
         GoalList goals, BoardRequest request, string gameModeClass, DetectionCapabilities capabilities) =>
@@ -191,6 +192,7 @@ public static class BoardBuilder
             .Where(g => capabilities.Detectors == null || capabilities.Detectors.Contains(g.Detector))
             .Where(g => capabilities.Events == null || (g.Requires?.Events ?? []).All(capabilities.Events.Contains))
             .Where(g => CharacterAllows(g.Requires?.Character, request))
+            .Where(g => request.Mode != BingoMode.Lockout || !DetectorCatalog.Shared(g.Detector))
             .OrderBy(g => g.Id, StringComparer.Ordinal)
             .ToList();
 

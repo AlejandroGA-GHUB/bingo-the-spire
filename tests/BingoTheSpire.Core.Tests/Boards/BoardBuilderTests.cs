@@ -1,3 +1,4 @@
+using BingoTheSpire.Core.Detection;
 using BingoTheSpire.Core.Boards;
 using BingoTheSpire.Core.Goals;
 using BingoTheSpire.Core.Randomness;
@@ -229,6 +230,21 @@ public class BoardBuilderTests
         Assert.DoesNotContain(needsOrbs, eligible);
         Assert.DoesNotContain(otherDetector, eligible);
         Assert.Contains(needsOrbs, BoardBuilder.EligibleGoals(goals, Request(), "Standard", DetectionCapabilities.All));
+    }
+
+    [Fact]
+    public void GoalsEveryoneCompletesAtOnce_StayOffLockoutBoards()
+    {
+        var goals = BuiltInGoals.List;
+        string[] shared = ["elites_defeated", "bosses_defeated", "quick_win"];
+        List<string> Eligible(BingoMode mode) =>
+            BoardBuilder.EligibleGoals(goals, Request(mode: mode), "Standard", DetectionCapabilities.All).Select(g => g.Id).ToList();
+
+        Assert.All(shared, id => Assert.DoesNotContain(id, Eligible(BingoMode.Lockout)));
+        Assert.All(shared, id => Assert.Contains(id, Eligible(BingoMode.Versus)));
+        Assert.All(shared, id => Assert.Contains(id, Eligible(BingoMode.Team)));
+        // Only those: every other goal is a real race between players.
+        Assert.Equal(Eligible(BingoMode.Versus).Count - shared.Length, Eligible(BingoMode.Lockout).Count);
     }
 
     [Fact]

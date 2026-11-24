@@ -13,8 +13,10 @@ public static class DetectorCatalog
     /// <param name="Create">Builds the detector from the tier's values; the flag says whether to pool (Team).</param>
     /// <param name="Lasting">Builds up over the whole run, so its progress stays on the board between fights.</param>
     /// <param name="Pools">In Team mode, every player's share adds up (and the target scales with the team size).</param>
+    /// <param name="Shared">Every player completes it at the same moment (e.g. winning a fight), so it's left off Lockout boards.</param>
     private sealed record Entry(
-        string[] Events, Func<IReadOnlyDictionary<string, int>, bool, IDetector> Create, bool Lasting = false, bool Pools = false);
+        string[] Events, Func<IReadOnlyDictionary<string, int>, bool, IDetector> Create, bool Lasting = false, bool Pools = false,
+        bool Shared = false);
 
     private static readonly Dictionary<string, Entry> Entries = new(StringComparer.Ordinal)
     {
@@ -63,11 +65,11 @@ public static class DetectorCatalog
             n => $"removed {n} card{(n == 1 ? "" : "s")} at shops"),
         ["PotionsUsed"] = Counter(Scope.Run, [nameof(PotionUsed)],
             (e, _) => e is PotionUsed p ? Mine(p.PlayerId) : None, n => $"used {n} potions"),
-        // Everyone in the fight gets these already, so they never pool.
+        // Everyone in the fight gets these at once, so they never pool and stay off Lockout boards.
         ["ElitesDefeated"] = Counter(Scope.Run, [nameof(CombatWon)],
-            (e, ctx) => e is CombatWon { RoomType: "Elite" } ? Everyone(ctx) : None, n => $"defeated {n} elites", pools: false),
+            (e, ctx) => e is CombatWon { RoomType: "Elite" } ? Everyone(ctx) : None, n => $"defeated {n} elites", pools: false, shared: true),
         ["BossesDefeated"] = Counter(Scope.Run, [nameof(CombatWon)],
-            (e, ctx) => e is CombatWon { RoomType: "Boss" } ? Everyone(ctx) : None, n => $"defeated {n} bosses", pools: false),
+            (e, ctx) => e is CombatWon { RoomType: "Boss" } ? Everyone(ctx) : None, n => $"defeated {n} bosses", pools: false, shared: true),
         ["RestSmiths"] = Counter(Scope.Run, [nameof(RestSmithed)],
             (e, _) => e is RestSmithed r ? Mine(r.PlayerId) : None, n => $"upgraded at {n} rest sites"),
         ["RestHeals"] = Counter(Scope.Run, [nameof(RestHealed)],
@@ -108,7 +110,7 @@ public static class DetectorCatalog
             (_, pooled) => new FlawlessWinsDetector(new HashSet<string> { "Boss" }, 1, "a boss", pooled), Pools: true),
         ["FlawlessHallways"] = new([nameof(HpChanged), nameof(CombatWon), nameof(CombatStarting)],
             (p, pooled) => new FlawlessWinsDetector(new HashSet<string> { "Monster" }, N(p), "normal", pooled), Lasting: true, Pools: true),
-        ["QuickWin"] = new([nameof(CombatWon), nameof(CombatStarting)], (p, _) => new QuickWinDetector(N(p))),
+        ["QuickWin"] = new([nameof(CombatWon), nameof(CombatStarting)], (p, _) => new QuickWinDetector(N(p)), Shared: true),
         ["LowHpWin"] = new([nameof(HpChanged), nameof(CombatWon)], (p, _) => new LowHpWinDetector(N(p))),
         ["CardHits"] = new([nameof(DamageDealt), nameof(CardPlayed)], (p, _) => new CardHitsDetector(N(p))),
         ["BlockHeld"] = new([nameof(BlockGained), nameof(CombatStarting)], (p, pooled) => new BlockHeldDetector(N(p), pooled), Pools: true),
@@ -132,6 +134,9 @@ public static class DetectorCatalog
 
     /// <summary>True if, in Team mode, this detector adds up every player's share.</summary>
     public static bool Pools(string detector) => Entries.TryGetValue(detector, out var e) && e.Pools;
+
+    /// <summary>True if every player completes this detector's goals at the same moment (spec 4.3).</summary>
+    public static bool Shared(string detector) => Entries.TryGetValue(detector, out var e) && e.Shared;
 
     public static IReadOnlyList<string> RequiredEvents(string detector) => Entries[detector].Events;
 
@@ -183,8 +188,9 @@ public static class DetectorCatalog
     /// <summary>Counters pool in Team unless told not to; run-long ones stay shown between fights.</summary>
     private static Entry Counter(
         Scope scope, string[] events, Func<GameEvent, DetectionContext, IEnumerable<Contribution>> count, Func<int, string> evidence,
-        bool pools = true) =>
-        new(events, (p, pooled) => new CounterDetector(scope, N(p), count, evidence, pooled), Lasting: scope == Scope.Run, Pools: pools);
+        bool pools = true, bool shared = false) =>
+        new(events, (p, pooled) => new CounterDetector(scope, N(p), count, evidence, pooled), Lasting: scope == Scope.Run, Pools: pools,
+            Shared: shared);
 
     /// <summary>Single moments for one player: never pooled, shown only during the fight.</summary>
     private static Entry Threshold(string[] events, Func<GameEvent, DetectionContext, Contribution?> measure, Func<int, string> evidence) =>
