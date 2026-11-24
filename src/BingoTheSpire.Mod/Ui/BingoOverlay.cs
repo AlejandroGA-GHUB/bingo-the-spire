@@ -190,7 +190,7 @@ internal sealed class BingoOverlay
         _board.Build(session.Board, solo ? "Solo" : session.Board.Mode.ToString(), compact: !solo && session.Board.Mode == BingoMode.Versus);
         foreach (var square in Enumerable.Range(0, session.Board.Squares.Count))
         {
-            var by = session.State.OwnerOf(square) ?? local;
+            var by = session.State.OwnersOf(square).Contains(local) ? local : session.State.OwnerOf(square) ?? local;
             if (session.State.ClaimOf(square, by) is { } c)
             {
                 _board.SetEvidence(square, Evidence(c));
@@ -323,18 +323,31 @@ internal sealed class BingoOverlay
         var filled = _session.State.FilledFor(_viewing);
         var lines = _session.State.LinesFor(_viewing);
         var inLines = lines.SelectMany(line => BoardRules.Lines(size)[line]).ToHashSet();
-        // Only Lockout marks other players' squares; in Team every filled square is just DONE.
+        // Only Lockout marks other players' squares, and ties; in Team every filled square is just DONE.
         var others = new Dictionary<int, string>();
+        var ties = new Dictionary<int, BoardPanel.TieMark>();
+        var order = PreviewOrder();
         for (var square = 0; square < _session.Board.Squares.Count && _session.Board.Mode == BingoMode.Lockout; square++)
         {
-            if (_session.State.OwnerOf(square) is { } owner && owner != _localPlayer)
+            var owners = _session.State.OwnersOf(square);
+            if (owners.Count == 0)
             {
-                others[square] = Name(owner);
+                continue;
+            }
+            if (!owners.Contains(_localPlayer))
+            {
+                others[square] = Names(owners);
+            }
+            else if (owners.Count > 1)
+            {
+                ties[square] = new BoardPanel.TieMark(
+                    owners.Where(o => o != _localPlayer).Select(o => (Name(o), BingoStyle.PlayerColor(order.IndexOf(o)))).ToList(),
+                    Everyone: owners.Count >= _session.State.Players.Count);
             }
         }
         var mine = _viewing == _localPlayer;
         _board.Update(filled, inLines, lines, _session.Board.Squares.Count, others, mine ? null : Name(_viewing), OneAway(),
-            mine ? null : BingoStyle.PlayerColor(PreviewOrder().IndexOf(_viewing)));
+            mine ? null : BingoStyle.PlayerColor(order.IndexOf(_viewing)), ties);
         _board.SetPlayers(Previews(), View);
         _board.SetFeed(Feed());
 
@@ -357,7 +370,7 @@ internal sealed class BingoOverlay
         var state = session.State;
         var lockout = session.Board.Mode == BingoMode.Lockout;
         IReadOnlySet<int> TakenByOthers(ulong player) => lockout
-            ? Enumerable.Range(0, session.Board.Squares.Count).Where(sq => state.OwnerOf(sq) is { } o && o != player).ToHashSet()
+            ? Enumerable.Range(0, session.Board.Squares.Count).Where(sq => state.OwnersOf(sq) is { Count: > 0 } o && !o.Contains(player)).ToHashSet()
             : new HashSet<int>();
 
         if (lockout)
@@ -463,6 +476,24 @@ internal sealed class BingoOverlay
                 }
                 Refresh();
                 return;
+            case BingoMode.Lockout when filled.Tie:
+                // A tie (spec 4.3.2): the square now has more than one player.
+                var owners = _session.State.OwnersOf(filled.Square);
+                if (mine)
+                {
+                    _board.MarkFilled(filled.Square, Evidence(c));
+                    _icon.Pulse();
+                }
+                Refresh();
+                if (owners.Contains(_localPlayer))
+                {
+                    _toasts.Tie(goal, TieText(owners), filled.Square);
+                }
+                else
+                {
+                    _toasts.Notice($"🔒 {Names(owners).ToUpperInvariant()} TIED FOR A SQUARE", goal, Toasts.Rival);
+                }
+                return;
             case BingoMode.Lockout when !mine:
                 _board.SetEvidence(filled.Square, Evidence(c));
                 Refresh();
@@ -483,7 +514,7 @@ internal sealed class BingoOverlay
 #endif
         // Always with who did it, so the line under the goal says more than the goal again.
         var who = mine ? Adapter.LocalPlayerName() : Name(filled.PlayerId);
-        _toasts.Square(goal, $"{who}: {Capitalize(c.Evidence)}");
+        _toasts.Square(goal, $"{who}: {Capitalize(c.Evidence)}", filled.Square);
     });
 
     private void ShowLine(LineCompleted line) => Deferred(() =>
@@ -521,6 +552,15 @@ internal sealed class BingoOverlay
             {
                 return;
             }
+            if (win.Draw)
+            {
+                // Someone made their first line at the same moment as the winner, through a tied square.
+                var youWon = _session.State.Winners.Any(w => w.PlayerId == _localPlayer);
+                _toasts.Notice(youWon ? "IT'S A DRAW!" : $"{Name(win.PlayerId).ToUpperInvariant()} WINS TOO",
+                    youWon ? $"{Name(win.PlayerId)} made a line at the same moment" : "A draw: a line at the same moment",
+                    youWon ? BingoStyle.Gold : Toasts.Rival, big: true);
+                return;
+            }
             var who = win.PlayerId == _localPlayer ? "YOU WIN" : $"{Name(win.PlayerId).ToUpperInvariant()} WINS";
             var how = win.Reason switch
             {
@@ -530,6 +570,21 @@ internal sealed class BingoOverlay
             };
             _toasts.Notice(who, how, win.PlayerId == _localPlayer ? BingoStyle.Gold : Toasts.Rival, big: true);
         });
+    }
+
+    /// <summary>"Sam", "Sam &amp; Kim", "Sam, Kim &amp; Lee".</summary>
+    private string Names(IReadOnlyList<ulong> players) =>
+        players.Count == 1 ? Name(players[0])
+        : string.Join(", ", players.Take(players.Count - 1).Select(Name)) + " & " + Name(players[^1]);
+
+    /// <summary>The line under a tie's goal: "You and Sam got it at the same moment".</summary>
+    private string TieText(IReadOnlyList<ulong> owners)
+    {
+        var others = owners.Where(o => o != _localPlayer).Select(Name).ToList();
+        var names = others.Count == 1 ? others[0] : string.Join(", ", others.Take(others.Count - 1)) + " and " + others[^1];
+        return others.Count == 1
+            ? $"You and {names} got it at the same moment: the square is shared"
+            : $"You, {names} got it at the same moment";
     }
 
     private readonly Dictionary<ulong, string> _names = new();

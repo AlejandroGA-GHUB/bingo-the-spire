@@ -28,7 +28,7 @@ internal static class BingoNet
     private static readonly MessageHandlerDelegate<BingoTheSpireSettingsMessage> OnSettings = (m, s) => Safe("settings", () => ReceiveSettings(m, s));
     private static readonly MessageHandlerDelegate<BingoTheSpireHelloMessage> OnHello = (m, s) => Safe("hello", () => ReceiveHello(m, s));
     private static readonly MessageHandlerDelegate<BingoTheSpireSnapshotMessage> OnSnapshot = (m, s) => Safe("snapshot", () => ModEntry.Bingo?.OnSnapshot(m.Enabled, m.BoardCode, m.BoardHash, m.Results ?? []));
-    private static readonly MessageHandlerDelegate<BingoTheSpireClaimMessage> OnClaim = (m, s) => Safe("claim", () => ModEntry.Bingo?.OnRemoteClaim(s, new Claim(m.Square, m.GoalId, m.PlayerId, m.Evidence, m.At)));
+    private static readonly MessageHandlerDelegate<BingoTheSpireClaimMessage> OnClaim = (m, s) => Safe("claim", () => ModEntry.Bingo?.OnRemoteClaim(s, new Claim(m.Square, m.GoalId, m.PlayerId, m.Evidence, m.At, m.Moment)));
     private static readonly MessageHandlerDelegate<BingoTheSpireResultMessage> OnResult = (m, s) => Safe("result", () => ModEntry.Bingo?.OnRemoteResult(m.Result));
 
     private static INetGameService? _service;
@@ -116,6 +116,7 @@ internal static class BingoNet
                 PlayerId = claim.PlayerId,
                 Evidence = claim.Evidence,
                 At = claim.At,
+                Moment = claim.Moment,
             });
         }
     }

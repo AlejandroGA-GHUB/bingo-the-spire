@@ -109,6 +109,21 @@ Rules for every mode:
 - Unclaimed squares count as still possible even when they can no longer be done in this run (e.g. an Act 1 goal after Act 1). That makes the rule safe: it can be slow to call a clinch, but it can never call one wrongly. Spotting squares that can no longer be done is a later idea (section 16).
 - After a win, play continues and later placements are tracked, as in the other modes.
 
+#### 4.3.2 Lockout: ties
+
+Two players can complete a goal at the same moment, e.g. both win the same elite fight without losing HP, or one enemy attack hits both for enough to count. Neither was first, so **both get the square**.
+
+**What "the same moment" means:** every event carries a **moment** that is the same on every player's game: the game action it ran in (the game numbers actions in the same order on every machine), or the end of a fight (`F12:won`). Events with neither have no moment and can't tie.
+
+- The host still decides claims in the order they arrive. When a claim arrives for a square that's already taken, and it comes from the **same moment** as the claim that took it, the host accepts it too: the square now has two (or three, or four) players. Different moments, however close, stay first come, first served.
+- A client still sends a claim for a taken square when the moments match (results carry their moment), since its own claim may only be detected after the host's result arrived.
+- **A tied square counts for each player who has it:** for their lines, their square count, and the clinch rule (it never blocks their lines). Rivals without it see it as taken by all of them ("Taken by Sam & Kim").
+- **On the board** it shows a **TIE!** stamp instead of DONE, with "with Sam" underneath, each name in its player's color: "with Sam & Kim", "with everyone" when every other player has it, and "with 2 others" when the names don't fit. Hovering lists everyone.
+- **The pop-up** is a gold "TIE!" card: "You and Sam got it at the same moment: the square is shared". It replaces the first player's SQUARE COMPLETE! for that square, whether it's still waiting or already showing, so nobody gets both. Players who aren't in the tie see "SAM & KIM TIED FOR A SQUARE".
+- **A draw:** if the tied square finishes the first line of more than one player, they share first place and **all win**. Results show both as 1st, "Won the bingo (a draw)". In general, players whose first lines come from the same tied square share a place (1, 1, 3).
+- Goals that every player always completes together (elites and bosses defeated, quick wins) are left off Lockout boards instead (section 4.3).
+- **Known gap:** the clinch is checked as each result arrives. If the very claim that clinches is later tied, the clinch has already been called. That needs the clinching square itself to be a tie, so it's left as is.
+
 ### 4.4 In-run UI
 
 - **Bingo button + hotkey** opens the full board. The button is always there and works with mouse and controller. It lives in the game's top bar, so screens and menus the game opens over the top bar cover it like the game's own buttons.
@@ -241,10 +256,10 @@ The list lives in `src/BingoTheSpire.Core/Goals/goals.json` (goal list version 8
 **Everything goes over the game's own co-op connection.** No Steam lobby of our own, no relay server, no cost.
 
 - **Messages:** the mod adds its own small message types to the game's co-op connection. They're always sent reliably.
-- **The host decides.** Each player's game detects goals for **its own player only** and sends a **claim** (square, goal, player, floor, turn, evidence) to the host. The host's own player claims locally.
+- **The host decides.** Each player's game detects goals for **its own player only** and sends a **claim** (square, goal, player, floor, turn, evidence, moment) to the host. The host's own player claims locally.
   1. The host applies the mode's rules (Lockout and Team: the first claim for a square wins it; Versus: accept) and gives the result an **order number**. A claim for a square that player already has gets no result at all.
   2. The host sends the **result** to everyone, and every game applies results in order, so all boards stay the same. Results also go into each game's journal (section 8).
-  3. Claims for squares that are already taken aren't sent. A race that's lost shows "Too late: Sam got it first".
+  3. Claims for squares that are already taken aren't sent, unless they could tie (section 4.3.2). A race that's lost shows "Too late: Sam got it first".
 - **Lobby options:** the host's bingo settings (on/off, difficulty, bingo seed, mode) are sent to everyone in the lobby: when the host changes them, when a player joins, and when a client's Bingo panel asks for them.
 - **One sync for start, Continue and rejoin:** whenever a client's run starts, it sends the host a **hello** with its board's hash. The host answers with a **snapshot**: on/off, its board code, its board hash, and every result so far.
   - If the client built a different board (e.g. it missed the lobby settings), it rebuilds the host's board from the code, and its own progress so far is claimed again.
@@ -352,6 +367,9 @@ The `id` must never change: the game uses it for its settings and co-op checks, 
   - Both wait 1 second by default (or the delay given, in seconds) so the console can be closed first.
   - `bingo reset` empties the board, in solo only. A Continue brings the squares back.
   - `bingo results` previews the end-of-run results as if the run ended now (nothing is saved); `bingo history` opens past runs.
+  - All of them act for the player who typed them only; the console doesn't pass them on to other players.
+  - `tie <row> <col> [delay]` fills one square for you at a shared test moment. When every player types it for the same square, they tie, through the same network path as a real tie.
+  - `swap <row> <col> <goal_id> [difficulty]` puts a different goal on an empty square, e.g. `swap 3 3 flawless_elite` to set up a real tie (then end a fight with the game's own console). Every player must type the same swap, or the host refuses claims for that square. Not saved: a Continue brings the original board back. `swap list` shows the goal ids.
 
 ## 13. Risks
 

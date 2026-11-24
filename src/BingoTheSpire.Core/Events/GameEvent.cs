@@ -53,6 +53,13 @@ public abstract record GameEvent
 
     /// <summary>Where in the run it happened, if known.</summary>
     public RunPosition? At { get; init; }
+
+    /// <summary>
+    /// The moment it happened, the same on every player's game in co-op: the game action it ran in,
+    /// or the end of a fight. Null when there's no such shared moment. Two Lockout claims for one
+    /// square from the same moment are a tie, and both players get the square (spec 4.3.2).
+    /// </summary>
+    public string? Moment { get; init; }
 }
 
 /// <param name="Act">0-based act index.</param>

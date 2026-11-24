@@ -72,10 +72,10 @@ public static class RunHistory
         var team = board.Mode == BingoMode.Team;
         var players = run.Players.Select(p =>
         {
-            var place = state.Placements.ToList().IndexOf(p.PlayerId);
+            // Players who drew share a place (spec 4.3.2).
             return new HistoryPlayer(p.PlayerId, name(p.PlayerId), p.CharacterId,
                 team ? state.FilledBy(p.PlayerId).Count : state.FilledFor(p.PlayerId).Count,
-                state.LinesFor(p.PlayerId).Count, place >= 0 ? place + 1 : null);
+                state.LinesFor(p.PlayerId).Count, state.PlaceOf(p.PlayerId));
         }).ToList();
 
         var lines = session.LineTimes

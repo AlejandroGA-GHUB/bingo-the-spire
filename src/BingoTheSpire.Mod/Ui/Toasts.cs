@@ -76,9 +76,40 @@ internal sealed class Toasts
     }
 
     /// <summary>A square was filled: a green card with a white "SQUARE COMPLETE!" label on its top edge.</summary>
-    public void Square(string goal, string evidence) => Post(() => ShowSquare(goal, evidence));
+    /// <param name="square">The board square, so a tie for it can replace this pop-up (see <see cref="Tie"/>).</param>
+    public void Square(string goal, string evidence, int square)
+    {
+        _pending.Add(square);
+        Post(() =>
+        {
+            // A tie arrived while this was waiting: only the TIE! pop-up shows.
+            if (!_pending.Remove(square))
+            {
+                return;
+            }
+            _shown[square] = ShowSquare(goal, evidence, "SQUARE COMPLETE!", new Color(0.08f, 0.32f, 0.17f, 0.97f), BingoStyle.FilledBorder, BingoStyle.FilledGlow);
+        });
+    }
 
-    private void ShowSquare(string goal, string evidence)
+    /// <summary>
+    /// Lockout tie (spec 4.3.2): you and others got a square at the same moment. Gold, with "TIE!" on
+    /// the label. It replaces your SQUARE COMPLETE! for that square, whether it's still waiting or showing.
+    /// </summary>
+    public void Tie(string goal, string text, int square)
+    {
+        _pending.Remove(square);
+        if (_shown.Remove(square, out var shown) && GodotObject.IsInstanceValid(shown))
+        {
+            shown.QueueFree();
+        }
+        Post(() => ShowSquare(goal, text, "TIE!", new Color(0.36f, 0.25f, 0.05f, 0.97f), BingoStyle.Gold, BingoStyle.Gold with { A = 0.45f }));
+    }
+
+    // Square pop-ups by square: waiting to show, and showing (freed when they fade out).
+    private readonly HashSet<int> _pending = [];
+    private readonly Dictionary<int, Control> _shown = new();
+
+    private Control ShowSquare(string goal, string evidence, string label, Color fill, Color border, Color glow)
     {
         // The label overlaps the card's top edge, drawn on top of it.
         var toast = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -87,11 +118,11 @@ internal sealed class Toasts
 
         var tab = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore, ZIndex = 1, SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
         tab.AddThemeStyleboxOverride("panel", TabStyle);
-        tab.AddChild(BingoStyle.Ink("SQUARE COMPLETE!", BingoFonts.Heading, 22, TabInk));
+        tab.AddChild(BingoStyle.Ink(label, BingoFonts.Heading, 22, TabInk));
         toast.AddChild(tab);
 
         var card = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        var box = BingoStyle.Box(new Color(0.08f, 0.32f, 0.17f, 0.97f), 14, 3, BingoStyle.FilledBorder, 16, BingoStyle.FilledGlow, 18);
+        var box = BingoStyle.Box(fill, 14, 3, border, 16, glow, 18);
         box.ContentMarginTop = 16 + TabOverlap;
         card.AddThemeStyleboxOverride("panel", box);
         toast.AddChild(card);
@@ -103,6 +134,7 @@ internal sealed class Toasts
             column.AddChild(Centered(BingoStyle.Text(evidence, 15, BingoStyle.Muted, outline: 4)));
         }
         Show(toast, hold: 3.0, popFrom: 0.7f);
+        return toast;
     }
 
     private const int TabOverlap = 18;

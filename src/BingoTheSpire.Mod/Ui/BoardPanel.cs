@@ -369,9 +369,10 @@ internal sealed class BoardPanel
     /// <param name="whose">Whose board this is when it isn't yours, for the nameplate.</param>
     /// <param name="whoseColor">That player's color, for their name tag and the frame round the board.</param>
     /// <param name="oneAway">Squares that would finish a line: "" for this board's player, or (Lockout) a rival's name.</param>
+    /// <param name="ties">Lockout: squares you tied for, with the other players who have them too.</param>
     public void Update(IReadOnlySet<int> filled, IReadOnlySet<int> inLines, IReadOnlyList<int> lines, int total,
         IReadOnlyDictionary<int, string>? others = null, string? whose = null, IReadOnlyDictionary<int, string>? oneAway = null,
-        Color? whoseColor = null)
+        Color? whoseColor = null, IReadOnlyDictionary<int, TieMark>? ties = null)
     {
         foreach (var line in lines.Where(l => !_struck.ContainsKey(l)))
         {
@@ -388,7 +389,7 @@ internal sealed class BoardPanel
         foreach (var cell in _cells)
         {
             var index = cell.Square.Index;
-            cell.SetState(filled.Contains(index), inLines.Contains(index), others?.GetValueOrDefault(index));
+            cell.SetState(filled.Contains(index), inLines.Contains(index), others?.GetValueOrDefault(index), ties?.GetValueOrDefault(index));
             cell.SetOneAway(oneAway?.GetValueOrDefault(index));
         }
         var lineText = lines.Count switch
@@ -612,9 +613,16 @@ internal sealed class BoardPanel
         return row;
     }
 
+    /// <summary>Lockout tie (spec 4.3.2): the other players who have this square too, with their colors.</summary>
+    /// <param name="Everyone">Every player in the run has it.</param>
+    public sealed record TieMark(IReadOnlyList<(string Name, Color Color)> Others, bool Everyone);
+
     /// <summary>One square: a paper note with the goal, a progress bar while it's being worked on, and a DONE stamp.</summary>
     private sealed class Cell
     {
+        private readonly HBoxContainer _with;
+        private readonly float _width;
+        private TieMark? _tie;
         private readonly Label _text;
         private readonly Control _barRow;
         private readonly ProgressBar _bar;
@@ -631,6 +639,7 @@ internal sealed class BoardPanel
         public Cell(BoardSquare square, Vector2 size, float tilt, bool onSpine)
         {
             Square = square;
+            _width = size.X;
             Note = new PaperNote(size, tilt);
             Note.SetTag(BingoStyle.Difficulty(square.Difficulty), square.Difficulty.ToString());
             Note.SetOnSpine(onSpine);
@@ -665,6 +674,16 @@ internal sealed class BoardPanel
             _stamp.Visible = false;
             PaperNote.PinTo(_stamp, Control.LayoutPreset.BottomRight, 8, 5);
             Note.Paper.AddChild(_stamp);
+
+            // Lockout tie: "with Sam" left of the TIE! stamp.
+            _with = new HBoxContainer { Visible = false, MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
+            _with.AddThemeConstantOverride("separation", 0);
+            _with.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
+            _with.OffsetLeft = WithLeft;
+            _with.OffsetRight = -WithRight;
+            _with.OffsetTop = -23;
+            _with.OffsetBottom = -3;
+            Note.Paper.AddChild(_with);
 
             _taken = BingoStyle.Ink("", BingoFonts.NoteBold, 14, BingoStyle.TakenInk);
             _taken.HorizontalAlignment = HorizontalAlignment.Center;
@@ -711,8 +730,67 @@ internal sealed class BoardPanel
 
         public string Evidence { get; set; } = "";
 
+        // The "with Sam" line sits between the note's left edge and the TIE! stamp.
+        private const int WithLeft = 8;
+        private const int WithRight = 70;
+
+        /// <summary>
+        /// "with Sam", "with Sam &amp; Kim", "with everyone", each name in its player's color. Shrinks
+        /// from 14 to 12 to fit; past that, "with 2 others", or one long name cut short with "…".
+        /// </summary>
+        private void ShowTie(TieMark tie)
+        {
+            foreach (var child in _with.GetChildren())
+            {
+                _with.RemoveChild(child);
+                child.QueueFree();
+            }
+            var room = _width - WithLeft - WithRight;
+            var font = BingoFonts.NoteBold;
+            var soft = BingoStyle.PageInkSoft;
+            List<(string Text, Color Color)> parts = [("with ", soft)];
+            if (tie.Everyone)
+            {
+                parts.Add(("everyone", soft));
+            }
+            else
+            {
+                for (var i = 0; i < tie.Others.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        parts.Add((i == tie.Others.Count - 1 ? " & " : ", ", soft));
+                    }
+                    parts.Add(tie.Others[i]);
+                }
+            }
+            float Width(int size) => parts.Sum(p => font.GetStringSize(p.Text, HorizontalAlignment.Left, -1, size).X);
+            var fontSize = 14;
+            while (fontSize > 12 && Width(fontSize) > room)
+            {
+                fontSize--;
+            }
+            if (Width(fontSize) > room && tie.Others.Count > 1)
+            {
+                parts = [("with ", soft), ($"{tie.Others.Count} others", soft)];
+            }
+            foreach (var (text, color) in parts)
+            {
+                _with.AddChild(BingoStyle.Ink(text, font, fontSize, color));
+            }
+            // One name too long even at 12: cut it short.
+            if (Width(fontSize) > room && _with.GetChild(_with.GetChildCount() - 1) is Label name)
+            {
+                name.ClipText = true;
+                name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+                name.CustomMinimumSize = new Vector2(room - font.GetStringSize("with ", HorizontalAlignment.Left, -1, fontSize).X, 0);
+                name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            }
+        }
+
         /// <param name="takenBy">Lockout: the player who took this square from you.</param>
-        public void SetState(bool filled, bool inLine, string? takenBy = null)
+        /// <param name="tie">Lockout: you have this square, and so do these players (a tie).</param>
+        public void SetState(bool filled, bool inLine, string? takenBy = null, TieMark? tie = null)
         {
             _filled = filled;
             _isTaken = !filled && takenBy != null;
@@ -722,6 +800,14 @@ internal sealed class BoardPanel
             _text.Modulate = _isTaken ? new Color(1, 1, 1, 0.45f) : filled ? new Color(1, 1, 1, 0.6f) : Colors.White;
 
             _stamp.Visible = filled;
+            var tied = filled ? tie : null;
+            _stampText.Text = tied != null ? "TIE!" : "DONE";
+            _with.Visible = tied != null;
+            if (tied != null && !(_tie != null && _tie.Everyone == tied.Everyone && _tie.Others.SequenceEqual(tied.Others)))
+            {
+                ShowTie(tied);
+            }
+            _tie = tied;
             var ink = inLine ? BingoStyle.BrassDark : BingoStyle.RedInk;
             _stampText.AddThemeColorOverride("font_color", ink);
             if (_stamp.GetThemeStylebox("panel") is StyleBoxFlat stampBox)
@@ -737,7 +823,13 @@ internal sealed class BoardPanel
             }
 
             // Hover only says what happened and where; the goal itself is already on the note.
-            Note.Slot.TooltipText = (filled || _isTaken) && Evidence.Length > 0 ? Evidence : "";
+            var tooltip = (filled || _isTaken) && Evidence.Length > 0 ? Evidence : "";
+            if (tied != null)
+            {
+                var names = string.Join(", ", tied.Others.Select(o => o.Name));
+                tooltip = (tooltip.Length > 0 ? tooltip + "\n" : "") + $"A tie: shared with {names}";
+            }
+            Note.Slot.TooltipText = tooltip;
         }
 
 

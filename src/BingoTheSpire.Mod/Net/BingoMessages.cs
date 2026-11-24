@@ -126,6 +126,7 @@ public struct BingoTheSpireClaimMessage : INetMessage
     public ulong PlayerId;
     public string Evidence;
     public RunPosition? At;
+    public string? Moment;
 
     public readonly bool ShouldBroadcast => false;
     readonly NetTransferMode INetMessage.Mode => NetEnums.Reliable;
@@ -139,6 +140,7 @@ public struct BingoTheSpireClaimMessage : INetMessage
         writer.WriteULong(PlayerId);
         writer.WriteString(Evidence ?? "");
         NetCodec.WritePosition(writer, At);
+        writer.WriteString(Moment ?? "");
     }
 
     public void Deserialize(PacketReader reader)
@@ -148,6 +150,7 @@ public struct BingoTheSpireClaimMessage : INetMessage
         PlayerId = reader.ReadULong();
         Evidence = reader.ReadString();
         At = NetCodec.ReadPosition(reader);
+        Moment = NetCodec.Optional(reader.ReadString());
     }
 }
 
@@ -177,7 +180,11 @@ internal static class NetCodec
         writer.WriteBool(result.Accepted);
         writer.WriteString(result.Evidence ?? "");
         WritePosition(writer, result.At);
+        writer.WriteString(result.Moment ?? "");
     }
+
+    /// <summary>Empty strings stand for null on the wire.</summary>
+    public static string? Optional(string text) => text.Length == 0 ? null : text;
 
     public static ClaimResolved ReadResult(PacketReader reader)
     {
@@ -188,7 +195,8 @@ internal static class NetCodec
         var accepted = reader.ReadBool();
         var evidence = reader.ReadString();
         var at = ReadPosition(reader);
-        return new ClaimResolved(order, square, goalId, playerId, accepted, evidence) { At = at };
+        var moment = Optional(reader.ReadString());
+        return new ClaimResolved(order, square, goalId, playerId, accepted, evidence) { At = at, Moment = moment };
     }
 
     public static void WritePosition(PacketWriter writer, RunPosition? at)

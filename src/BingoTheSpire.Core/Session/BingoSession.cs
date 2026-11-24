@@ -35,7 +35,7 @@ public sealed class BingoSession
         Tracker.Completed += OnCompleted;
     }
 
-    public BingoBoard Board { get; }
+    public BingoBoard Board { get; private set; }
 
     public GoalTracker Tracker { get; }
 
@@ -125,7 +125,7 @@ public sealed class BingoSession
         {
             return;
         }
-        Submit(new Claim(completion.Square, completion.GoalId, completion.PlayerId, completion.Evidence, completion.At));
+        Submit(new Claim(completion.Square, completion.GoalId, completion.PlayerId, completion.Evidence, completion.At, completion.Moment));
     }
 
     /// <summary>
@@ -133,13 +133,39 @@ public sealed class BingoSession
     /// Goes through the normal rules: decided here by the authority, or sent to the host.
     /// </summary>
     /// <returns>False if the square can't be claimed (already the player's, or taken).</returns>
-    public bool ClaimSquare(int square, ulong playerId, string evidence, RunPosition? at = null)
+    public bool ClaimSquare(int square, ulong playerId, string evidence, RunPosition? at = null, string? moment = null)
     {
         if (square < 0 || square >= Board.Squares.Count)
         {
             throw new ArgumentOutOfRangeException(nameof(square));
         }
-        return Submit(new Claim(square, Board.Squares[square].GoalId, playerId, evidence, at));
+        return Submit(new Claim(square, Board.Squares[square].GoalId, playerId, evidence, at, moment));
+    }
+
+    /// <summary>
+    /// For testing only (the dev console): puts a different goal on an empty square, e.g. to set up
+    /// a Lockout tie on purpose. Every player's game must swap the same square the same way, or
+    /// the host refuses their claims for it. Not saved: a Continue brings the original board back.
+    /// </summary>
+    /// <returns>The new square, or null if someone already has this one.</returns>
+    public BoardSquare? SwapGoal(int square, GoalDefinition goal, GoalTier tier)
+    {
+        if (square < 0 || square >= Board.Squares.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(square));
+        }
+        if (State.Players.Any(p => State.FilledBy(p).Contains(square)))
+        {
+            return null;
+        }
+        var parameters = tier.Params ?? new Dictionary<string, int>();
+        var swapped = new BoardSquare(square, goal.Id, tier.Difficulty, parameters, GoalText.Render(goal.Text, parameters));
+        var squares = Board.Squares.ToList();
+        squares[square] = swapped;
+        Board = Board with { Squares = squares };
+        State.ReplaceBoard(Board);
+        Tracker.Replace(swapped, goal);
+        return swapped;
     }
 
     private bool Submit(Claim claim)

@@ -77,6 +77,10 @@ internal static class HistoryBook
                 left.AddChild(row);
                 left.AddChild(Body($"{Character(player.Character)}  ·  {Plural(player.Squares, "square")}  ·  {Plural(player.Lines, "line")}", 15, BingoStyle.PageInkSoft));
             }
+            if (!team && Drew(entry))
+            {
+                left.AddChild(Body("A draw: a tied square made their first lines at the same moment.", 14, BingoStyle.PageInkSoft));
+            }
             if (entry.Winner is { } winner && entry.WinReason == "MostSquares")
             {
                 left.AddChild(Body($"No line this run: {Who(entry, winner)} won on most squares.", 14, BingoStyle.PageInkSoft));
@@ -92,7 +96,8 @@ internal static class HistoryBook
         foreach (var line in entry.Lines.Take(8))
         {
             var who = entry.Solo || team ? "" : $"{Who(entry, line.Player)}: ";
-            var bingo = line.Ordinal == 1 && (entry.Solo || team || line.Player == entry.Winner);
+            var bingo = line.Ordinal == 1 && (entry.Solo || team || line.Player == entry.Winner
+                || (Drew(entry) && entry.Players.Any(p => p.Id == line.Player && p.Place == 1)));
             var title = line.Ordinal == 1 ? "BINGO!" : $"{Ordinal(line.Ordinal)} line";
             var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
             row.AddThemeConstantOverride("separation", 10);
@@ -253,12 +258,20 @@ internal static class HistoryBook
         return (book, left, right);
     }
 
+    /// <summary>The winner drew: another player made their first line at the same moment, through a tied square (spec 4.3.2).</summary>
+    private static bool Drew(HistoryEntry entry) =>
+        entry.Players.Any(p => p.Id == entry.Winner && p.Place == 1) && entry.Players.Count(p => p.Place == 1) > 1;
+
     /// <summary>The bingo result from your point of view, e.g. "Bingo on floor 9" or "2nd".</summary>
     private static string Outcome(HistoryEntry entry)
     {
         if (!entry.Solo && entry.Mode != "Team" && entry.Me?.Place is { } place)
         {
-            return entry.Winner == entry.You ? "Won the bingo" : $"{Ordinal(place)} place";
+            if (entry.Winner == entry.You || (place == 1 && Drew(entry)))
+            {
+                return Drew(entry) ? "Won the bingo (a draw)" : "Won the bingo";
+            }
+            return $"{Ordinal(place)} place";
         }
         if (!entry.Solo && entry.Mode != "Team" && entry.Winner is { } winner)
         {

@@ -127,6 +127,107 @@ public sealed class BingoFillConsoleCmd : AbstractConsoleCmd
     }
 }
 
+/// <summary>
+/// <c>tie 2 3</c> fills a square for you, as if at a moment every player can share. When every
+/// player types it for the same square, their claims tie (spec 4.3.2), through the real network path.
+/// </summary>
+public sealed class BingoTieConsoleCmd : AbstractConsoleCmd
+{
+    public override string CmdName => "tie";
+
+    public override string Args => "<row:int> <col:int> [delay:seconds]";
+
+    public override string Description =>
+        "Bingo the Spire, Lockout: fill one square for you only, at a shared test moment. Every player who types "
+        + "'tie' for the same square ties for it, like completing it in the same game action. Waits 1 second first (or the delay given).";
+
+    public override bool IsNetworked => false;
+
+    public override CmdResult Process(Player? issuingPlayer, string[] args)
+    {
+        if (DevCommands.Board() is not { } board)
+        {
+            return new CmdResult(success: false, "There's no bingo board in this run.");
+        }
+        var (session, player) = board;
+        var size = session.Board.Size;
+        if (args.Length < 2 || !DevCommands.TryNumber(args[0], 1, size, out var row) || !DevCommands.TryNumber(args[1], 1, size, out var column))
+        {
+            return new CmdResult(success: false, $"Give a row and a column from 1 to {size}, e.g. 'tie 2 3'.");
+        }
+        if (!DevCommands.TryDelay(args, 2, out var delay))
+        {
+            return new CmdResult(success: false, "The delay must be a number of seconds, e.g. 'tie 2 3 0'.");
+        }
+        var square = (row - 1) * size + (column - 1);
+        if (session.State.ClaimOf(square, player) != null)
+        {
+            return new CmdResult(success: false, $"Row {row}, column {column} is already yours.");
+        }
+        var note = session.Board.Mode == BingoTheSpire.Core.Boards.BingoMode.Lockout ? "" : " (ties only happen in Lockout)";
+        DevCommands.After(delay, () => session.ClaimSquare(square, player, DevCommands.Evidence, moment: $"dev:{square}"));
+        return new CmdResult(success: true, $"Filling \"{session.Board.Squares[square].Text}\" at a shared test moment{note}.");
+    }
+}
+
+/// <summary>
+/// <c>swap 2 3 flawless_elite 3</c> puts a different goal on an empty square, on your game only.
+/// Every player must type the same swap, or the host refuses claims for that square.
+/// </summary>
+public sealed class BingoSwapConsoleCmd : AbstractConsoleCmd
+{
+    public override string CmdName => "swap";
+
+    public override string Args => "<row:int> <col:int> <goal_id> [difficulty:1-5]";
+
+    public override string Description =>
+        "Bingo the Spire: put a different goal on an empty square, e.g. 'swap 3 3 flawless_elite'. On your game only: "
+        + "in co-op every player must type the same swap. Not saved: a Continue brings the original board back. "
+        + "'swap list' shows the goal ids.";
+
+    public override bool IsNetworked => false;
+
+    public override CmdResult Process(Player? issuingPlayer, string[] args)
+    {
+        var goals = BingoTheSpire.Core.Goals.BuiltInGoals.List.Goals;
+        if (args.Length >= 1 && args[0].Equals("list", StringComparison.OrdinalIgnoreCase))
+        {
+            return new CmdResult(success: true, string.Join(", ", goals.Select(g => g.Id).OrderBy(id => id, StringComparer.Ordinal)));
+        }
+        if (DevCommands.Board() is not { } board)
+        {
+            return new CmdResult(success: false, "There's no bingo board in this run.");
+        }
+        var (session, player) = board;
+        var size = session.Board.Size;
+        if (args.Length < 3 || !DevCommands.TryNumber(args[0], 1, size, out var row) || !DevCommands.TryNumber(args[1], 1, size, out var column))
+        {
+            return new CmdResult(success: false, $"Give a row and a column from 1 to {size} and a goal id, e.g. 'swap 3 3 flawless_elite'. 'swap list' shows the ids.");
+        }
+        var goal = goals.FirstOrDefault(g => g.Id.Equals(args[2], StringComparison.OrdinalIgnoreCase));
+        if (goal == null)
+        {
+            return new CmdResult(success: false, $"No goal '{args[2]}'. 'swap list' shows the ids.");
+        }
+        var difficulty = 0;
+        if (args.Length >= 4 && !DevCommands.TryNumber(args[3], 1, 5, out difficulty))
+        {
+            return new CmdResult(success: false, "The difficulty must be from 1 to 5.");
+        }
+        // The tier at that difficulty, or the closest (the first if none was given).
+        var tier = difficulty == 0 ? goal.Tiers[0] : goal.Tiers.OrderBy(t => Math.Abs(t.Difficulty - difficulty)).First();
+        var square = (row - 1) * size + (column - 1);
+        if (session.SwapGoal(square, goal, tier) is not { } swapped)
+        {
+            return new CmdResult(success: false, $"Row {row}, column {column} is already filled.");
+        }
+        Ui.BingoOverlay.Current?.Bind(session, player);
+        BingoLog.Info($"dev console: square {row},{column} is now \"{swapped.Text}\" (difficulty {swapped.Difficulty})");
+        var coop = BingoNet.Role == NetRole.Solo ? "" : " Every other player must type the same swap.";
+        return new CmdResult(success: true, $"Row {row}, column {column} is now \"{swapped.Text}\".{coop}");
+    }
+}
+
 internal static class DevCommands
 {
     /// <summary>Evidence on squares filled from the console.</summary>

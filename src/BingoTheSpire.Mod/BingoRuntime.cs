@@ -482,16 +482,19 @@ internal sealed class BingoRuntime
 
     private static void LogBoardEvents(BingoSession session)
     {
-        var board = session.Board;
+        // session.Board, not a copy: the dev console can swap a square's goal.
         session.State.Filled += f => BingoLog.Info(
-            $"square {Cell(board, f.Square)} done by player {f.PlayerId}: \"{board.Squares[f.Square].Text}\" ({f.Claim.Evidence}{Where(f.Claim.At)})");
+            $"square {Cell(session.Board, f.Square)} {(f.Tie ? "tied" : "done")} by player {f.PlayerId}: \"{session.Board.Squares[f.Square].Text}\" ({f.Claim.Evidence}{Where(f.Claim.At)}{MomentOf(f.Claim.Moment)})");
         session.State.Rejected += r => BingoLog.Info(
-            $"square {Cell(board, r.Square)} was already taken when player {r.PlayerId} completed it");
-        session.State.Won += w => BingoLog.Info($"player {w.PlayerId} wins the bingo ({w.Reason}){Where(w.At)}");
+            $"square {Cell(session.Board, r.Square)} was already taken when player {r.PlayerId} completed it{MomentOf(r.Moment)}"
+            + (session.State.OwnerOf(r.Square) is { } owner && session.State.ClaimOf(r.Square, owner) is { } first ? $", taken{MomentOf(first.Moment)}" : ""));
+        session.State.Won += w => BingoLog.Info($"player {w.PlayerId} wins the bingo ({w.Reason}{(w.Draw ? ", a draw" : "")}){Where(w.At)}");
         session.State.LineDone += l => BingoLog.Info(l.Ordinal == 1
-            ? $"BINGO! player {l.PlayerId} completed {BoardRules.LineName(board.Size, l.Line).ToLowerInvariant()}{Where(l.At)}"
-            : $"line #{l.Ordinal} for player {l.PlayerId}: {BoardRules.LineName(board.Size, l.Line).ToLowerInvariant()}{Where(l.At)}");
+            ? $"BINGO! player {l.PlayerId} completed {BoardRules.LineName(session.Board.Size, l.Line).ToLowerInvariant()}{Where(l.At)}"
+            : $"line #{l.Ordinal} for player {l.PlayerId}: {BoardRules.LineName(session.Board.Size, l.Line).ToLowerInvariant()}{Where(l.At)}");
     }
+
+    private static string MomentOf(string? moment) => moment == null ? "" : $" at moment {moment}";
 
     private void SaveHistory(BingoSession session, RunEnded ended)
     {
@@ -540,9 +543,9 @@ internal sealed class BingoRuntime
         {
             sb.Append($"\n  player {player}: {session.State.FilledBy(player).Count}/{session.Board.Squares.Count} squares, {session.State.LinesFor(player).Count} line(s)");
         }
-        if (session.State.Winner is { } winner)
+        foreach (var winner in session.State.Winners)
         {
-            sb.Append($"\n  winner: player {winner.PlayerId} ({winner.Reason})");
+            sb.Append($"\n  winner: player {winner.PlayerId} ({winner.Reason}{(winner.Draw ? ", a draw" : "")})");
         }
         BingoLog.Info(sb.ToString());
     }

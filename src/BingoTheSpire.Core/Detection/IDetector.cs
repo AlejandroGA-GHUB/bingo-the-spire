@@ -22,6 +22,7 @@ public interface IDetectionSink
 }
 
 /// <param name="Square">Index of the square on the board.</param>
-public sealed record GoalCompletion(int Square, string GoalId, ulong PlayerId, string Evidence, RunPosition? At, long Seq);
+/// <param name="Moment">The shared moment of the event that completed it (see <see cref="GameEvent.Moment"/>).</param>
+public sealed record GoalCompletion(int Square, string GoalId, ulong PlayerId, string Evidence, RunPosition? At, long Seq, string? Moment = null);
 
 public sealed record GoalProgress(int Square, ulong PlayerId, int Current, int Target);

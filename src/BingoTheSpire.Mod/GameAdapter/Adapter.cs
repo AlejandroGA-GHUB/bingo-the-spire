@@ -243,7 +243,33 @@ internal static class Adapter
 
     public static void Publish(GameEvent evt)
     {
-        _bus?.Publish(evt with { At = CurrentPosition() });
+        _bus?.Publish(evt with { At = CurrentPosition(), Moment = CurrentMoment(evt) });
+    }
+
+    /// <summary>
+    /// The moment an event happened, the same on every player's game (spec 4.3.2): the end of a
+    /// fight, or the game action it ran in. The game gives every action an id in the same order on
+    /// every machine. Null when there's neither, so the event can't make a tie.
+    /// </summary>
+    private static string? CurrentMoment(GameEvent evt)
+    {
+        if (_run == null)
+        {
+            return null;
+        }
+        var floor = _run.TotalFloor;
+        if (evt is CombatWon)
+        {
+            return $"F{floor}:won";
+        }
+        try
+        {
+            return RunManager.Instance?.ActionExecutor?.CurrentlyRunningAction?.Id is { } id ? $"F{floor}:A{id}" : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static RunPosition? CurrentPosition()

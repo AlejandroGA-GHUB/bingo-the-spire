@@ -30,6 +30,13 @@ public sealed class GoalTracker
         OnDetectorError = onDetectorError;
     }
 
+    /// <summary>For testing only: a new detector for one square, for a goal swapped in (see <see cref="Session.BingoSession.SwapGoal"/>).</summary>
+    internal void Replace(BoardSquare square, GoalDefinition goal)
+    {
+        var detector = DetectorCatalog.Create(goal.Detector, square.Params, team: Team);
+        _squares[square.Index] = new Square(this, square.Index, goal.Id, detector, DetectorCatalog.Lasting(goal.Detector));
+    }
+
     public event Action<GoalCompletion>? Completed;
 
     public event Action<GoalProgress>? Progressed;
@@ -115,7 +122,7 @@ public sealed class GoalTracker
             {
                 return;
             }
-            tracker.Completed?.Invoke(new GoalCompletion(index, GoalId, playerId, evidence, Current?.At, Current?.Seq ?? 0));
+            tracker.Completed?.Invoke(new GoalCompletion(index, GoalId, playerId, evidence, Current?.At, Current?.Seq ?? 0, Current?.Moment));
         }
 
         public void Progress(ulong playerId, int current, int target)

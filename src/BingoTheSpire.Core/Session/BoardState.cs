@@ -4,9 +4,11 @@ using BingoTheSpire.Core.Events;
 namespace BingoTheSpire.Core.Session;
 
 /// <summary>A player's game detected a goal, and asks the authority (solo game or co-op host) for the square.</summary>
-public sealed record Claim(int Square, string GoalId, ulong PlayerId, string Evidence, RunPosition? At);
+/// <param name="Moment">The shared moment it happened (see <see cref="GameEvent.Moment"/>), for Lockout ties.</param>
+public sealed record Claim(int Square, string GoalId, ulong PlayerId, string Evidence, RunPosition? At, string? Moment = null);
 
-public sealed record SquareFilled(int Square, ulong PlayerId, ClaimResolved Claim);
+/// <param name="Tie">Lockout: someone already had the square, and this player tied with them (spec 4.3.2).</param>
+public sealed record SquareFilled(int Square, ulong PlayerId, ClaimResolved Claim, bool Tie = false);
 
 /// <param name="Line">Index into <see cref="BoardRules.Lines"/>: rows, then columns, then the two diagonals.</param>
 /// <param name="PlayerId">Who made the line. In Team, the player whose square finished it.</param>
@@ -25,7 +27,8 @@ public enum WinReason
     MostSquares,
 }
 
-public sealed record BingoWin(ulong PlayerId, WinReason Reason, RunPosition? At);
+/// <param name="Draw">This player made their first line at the same moment as the winner, through a tied square, so they win too.</param>
+public sealed record BingoWin(ulong PlayerId, WinReason Reason, RunPosition? At, bool Draw = false);
 
 /// <summary>
 /// The board as everyone sees it: the authority's results applied in order, with each mode's rules
@@ -38,11 +41,15 @@ public sealed class BoardState
     private readonly SortedSet<ulong> _players = [];
     private readonly HashSet<long> _applied = [];
     private readonly Dictionary<ulong, HashSet<int>> _filled = new();
-    private readonly Dictionary<int, ulong> _owner = new();
+    // Lockout and Team: who has each square, first claim first. Lockout ties add more players.
+    private readonly Dictionary<int, List<ulong>> _owners = new();
     private readonly Dictionary<(int Square, ulong Player), ClaimResolved> _claims = new();
     private readonly Dictionary<ulong, List<int>> _playerLines = new();
     private readonly List<int> _teamLines = [];
     private readonly List<ulong> _placements = [];
+    private readonly Dictionary<ulong, int> _place = new();
+    private readonly Dictionary<ulong, (int Square, string? Moment)> _placedBy = new();
+    private readonly List<BingoWin> _winners = [];
 
     // Lockout tie-breaks: the order at which each player reached each square count.
     private readonly Dictionary<ulong, List<long>> _reachedAt = new();
@@ -53,7 +60,10 @@ public sealed class BoardState
         _lines = BoardRules.Lines(board.Size);
     }
 
-    public BingoBoard Board { get; }
+    public BingoBoard Board { get; private set; }
+
+    /// <summary>For testing only: the board with one square's goal swapped (see <see cref="BingoSession.SwapGoal"/>).</summary>
+    internal void ReplaceBoard(BingoBoard board) => Board = board;
 
     public BingoMode Mode => Board.Mode;
 
@@ -63,8 +73,17 @@ public sealed class BoardState
     /// <summary>Who won the bingo, once someone has (Versus and Lockout; Team has no winner).</summary>
     public BingoWin? Winner { get; private set; }
 
-    /// <summary>Versus: players in the order they made their first line.</summary>
+    /// <summary>The winner, plus anyone who drew with them (a Lockout tie that made both their first lines).</summary>
+    public IReadOnlyList<BingoWin> Winners => _winners;
+
+    /// <summary>Players in the order they made their first line.</summary>
     public IReadOnlyList<ulong> Placements => _placements;
+
+    /// <summary>
+    /// A player's place by first line: 1 for the first, and the same place for players who drew
+    /// (then the next place is skipped, e.g. 1, 1, 3). Null if they made no line.
+    /// </summary>
+    public int? PlaceOf(ulong playerId) => _place.TryGetValue(playerId, out var place) ? place : null;
 
     public IReadOnlyCollection<ulong> Players => _players;
 
@@ -91,11 +110,15 @@ public sealed class BoardState
 
     /// <summary>Squares shown as done on this player's board: their own, or the whole team's in Team mode.</summary>
     public IReadOnlySet<int> FilledFor(ulong playerId) =>
-        Mode == BingoMode.Team ? _owner.Keys.ToHashSet() : FilledBy(playerId);
+        Mode == BingoMode.Team ? _owners.Keys.ToHashSet() : FilledBy(playerId);
 
-    /// <summary>Lockout and Team: who has the square. Null in Versus, where every player has their own.</summary>
+    /// <summary>Lockout and Team: who got the square first. Null in Versus, where every player has their own.</summary>
     public ulong? OwnerOf(int square) =>
-        Mode != BingoMode.Versus && _owner.TryGetValue(square, out var owner) ? owner : null;
+        Mode != BingoMode.Versus && _owners.TryGetValue(square, out var owners) ? owners[0] : null;
+
+    /// <summary>Lockout and Team: everyone who has the square, first claim first. More than one is a Lockout tie.</summary>
+    public IReadOnlyList<ulong> OwnersOf(int square) =>
+        Mode != BingoMode.Versus && _owners.TryGetValue(square, out var owners) ? owners : [];
 
     /// <summary>Lines shown on this player's board: their own, or the team's in Team mode.</summary>
     public IReadOnlyList<int> LinesFor(ulong playerId) =>
@@ -109,8 +132,21 @@ public sealed class BoardState
     public bool CouldAccept(Claim claim) => Mode switch
     {
         BingoMode.Versus => !FilledBy(claim.PlayerId).Contains(claim.Square),
-        _ => !_owner.ContainsKey(claim.Square),
+        BingoMode.Lockout => !_owners.ContainsKey(claim.Square) || IsTie(claim),
+        _ => !_owners.ContainsKey(claim.Square),
     };
+
+    /// <summary>
+    /// Lockout (spec 4.3.2): the square is taken, but this claim comes from the same moment as the
+    /// claim that took it, so the player tied and gets the square too.
+    /// </summary>
+    private bool IsTie(Claim claim) =>
+        Mode == BingoMode.Lockout
+        && claim.Moment != null
+        && _owners.TryGetValue(claim.Square, out var owners)
+        && !owners.Contains(claim.PlayerId)
+        && _claims.TryGetValue((claim.Square, owners[0]), out var first)
+        && first.Moment == claim.Moment;
 
     /// <summary>
     /// The authority's decision on a claim (not applied yet). Null when the player already has
@@ -128,6 +164,7 @@ public sealed class BoardState
         {
             At = claim.At,
             Seq = seq,
+            Moment = claim.Moment,
         };
     }
 
@@ -155,14 +192,23 @@ public sealed class BoardState
         {
             return;
         }
-        _owner.TryAdd(result.Square, player);
+        var tie = false;
+        if (Mode != BingoMode.Versus)
+        {
+            if (!_owners.TryGetValue(result.Square, out var owners))
+            {
+                _owners[result.Square] = owners = [];
+            }
+            tie = Mode == BingoMode.Lockout && owners.Count > 0;
+            owners.Add(player);
+        }
         _claims[(result.Square, player)] = result;
         if (!_reachedAt.TryGetValue(player, out var reached))
         {
             _reachedAt[player] = reached = [];
         }
         reached.Add(result.Order);
-        Filled?.Invoke(new SquareFilled(result.Square, player, result));
+        Filled?.Invoke(new SquareFilled(result.Square, player, result, tie));
 
         CheckLines(result);
         if (Mode == BingoMode.Lockout && Winner == null)
@@ -182,11 +228,14 @@ public sealed class BoardState
     {
         _applied.Clear();
         _filled.Clear();
-        _owner.Clear();
+        _owners.Clear();
         _claims.Clear();
         _playerLines.Clear();
         _teamLines.Clear();
         _placements.Clear();
+        _place.Clear();
+        _placedBy.Clear();
+        _winners.Clear();
         _reachedAt.Clear();
         NextOrder = 1;
         Winner = null;
@@ -226,7 +275,7 @@ public sealed class BoardState
         List<int> lines;
         if (Mode == BingoMode.Team)
         {
-            done = _owner.Keys.ToHashSet();
+            done = _owners.Keys.ToHashSet();
             lines = _teamLines;
         }
         else
@@ -248,11 +297,7 @@ public sealed class BoardState
             LineDone?.Invoke(new LineCompleted(i, player, lines.Count, result.At, result.Order));
             if (lines.Count == 1 && Mode != BingoMode.Team)
             {
-                _placements.Add(player);
-                if (Winner == null)
-                {
-                    Win(new BingoWin(player, WinReason.Line, result.At));
-                }
+                Place(player, result);
             }
         }
     }
@@ -267,7 +312,7 @@ public sealed class BoardState
         {
             return;
         }
-        var unclaimed = Board.Squares.Count - _owner.Count;
+        var unclaimed = Board.Squares.Count - _owners.Count;
         var candidates = _players
             .Where(p => Count(p) > 0 && _players.Where(q => q != p).All(q => Count(q) + unclaimed <= Count(p) && !HasLiveLine(q)))
             .ToList();
@@ -280,14 +325,49 @@ public sealed class BoardState
         Win(new BingoWin(winner, WinReason.Clinch, result.At));
     }
 
+    /// <summary>
+    /// A player made their first line. If it came from a tied square, at the same moment as
+    /// another player's first line, they share that player's place, and a win too (spec 4.3.2).
+    /// </summary>
+    private void Place(ulong player, ClaimResolved result)
+    {
+        ulong? drewWith = null;
+        if (result.Moment != null)
+        {
+            foreach (var other in _placements)
+            {
+                if (_placedBy[other] == (result.Square, result.Moment))
+                {
+                    drewWith = other;
+                    break;
+                }
+            }
+        }
+        var place = drewWith is { } d ? _place[d] : _placements.Count + 1;
+        _placements.Add(player);
+        _place[player] = place;
+        _placedBy[player] = (result.Square, result.Moment);
+
+        if (Winner == null)
+        {
+            Win(new BingoWin(player, WinReason.Line, result.At));
+        }
+        else if (drewWith is { } rival && _winners.Any(w => w.PlayerId == rival && w.Reason == WinReason.Line))
+        {
+            Win(new BingoWin(player, WinReason.Line, result.At, Draw: true));
+        }
+    }
+
     private int Count(ulong player) => _filled.TryGetValue(player, out var set) ? set.Count : 0;
 
+    /// <summary>A line only this player's or unclaimed squares are in. A tied square counts for each player who has it.</summary>
     private bool HasLiveLine(ulong player) =>
-        _lines.Any(line => line.All(square => !_owner.TryGetValue(square, out var owner) || owner == player));
+        _lines.Any(line => line.All(square => !_owners.TryGetValue(square, out var owners) || owners.Contains(player)));
 
     private void Win(BingoWin win)
     {
-        Winner = win;
+        Winner ??= win;
+        _winners.Add(win);
         Won?.Invoke(win);
     }
 }
