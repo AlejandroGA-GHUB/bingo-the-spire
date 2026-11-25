@@ -331,7 +331,7 @@ Manifest (`BingoTheSpire.json`):
   "name": "Bingo the Spire",
   "author": "Texin",
   "description": "In-game bingo boards for solo and co-op runs. Squares complete automatically as the game detects each goal.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "has_dll": true,
   "has_pck": false,
   "affects_gameplay": true,
