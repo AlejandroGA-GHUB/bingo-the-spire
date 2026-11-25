@@ -356,6 +356,50 @@ public sealed class DebuffVarietyDetector(int target, bool pooled = false) : IDe
     }
 }
 
+/// <summary>
+/// "Have {n}+ stacks of one buff". Pooled (Team), the same buff's stacks on every player add up:
+/// 14 Return Blade on one player and 8 on another make 22. Different buffs never add up.
+/// Progress shows the best so far in the current fight.
+/// </summary>
+public sealed class BuffStacksDetector(int target, bool pooled = false) : IDetector
+{
+    private readonly Dictionary<(ulong Player, string Power), int> _stacks = new();
+    private readonly Dictionary<ulong, int> _best = new();
+
+    public void Handle(GameEvent evt, DetectionContext context, IDetectionSink sink)
+    {
+        if (evt is CombatStarting)
+        {
+            _stacks.Clear();
+            _best.Clear();
+            return;
+        }
+        if (evt is not PowerChanged { OwnerKind: CreatureKind.Player, OwnerPlayerId: { } player, PowerType: "Buff" } power)
+        {
+            return;
+        }
+        _stacks[(player, power.PowerId)] = Math.Max(power.Amount, 0);
+
+        var who = pooled ? Pool.Team : player;
+        var amount = pooled
+            ? _stacks.Where(kv => kv.Key.Power == power.PowerId).Sum(kv => kv.Value)
+            : _stacks[(player, power.PowerId)];
+        if (!_best.TryGetValue(who, out var best) || amount > best)
+        {
+            _best[who] = amount;
+            foreach (var member in Pool.Members(context, who, player))
+            {
+                sink.Progress(member, Math.Min(amount, target), target);
+            }
+        }
+        if (amount >= target)
+        {
+            var name = DisplayNames.Of(power.PowerName, power.PowerId, "stacks of a buff");
+            sink.Complete(player, Pool.Evidence(pooled, $"{amount} {name}"));
+        }
+    }
+}
+
 /// <summary>"Have {n} different buffs at once". Counted within a combat.</summary>
 public sealed class BuffVarietyDetector(int target) : IDetector
 {

@@ -166,6 +166,40 @@ public class DetectorTests
         Assert.Equal([Alex], s.Winners);
     }
 
+    private static PowerChanged Buff(ulong player, string id, int amount, string? name = null) =>
+        new(id, "Buff", amount, amount, CreatureKind.Player, player, null, 0, player, null, name);
+
+    [Fact]
+    public void BuffStacks_OnePlayersOwnStacks_OutsideTeam()
+    {
+        var s = new Script(BingoMode.Versus, "BuffStacks", 20, Alex, Sam).Fight();
+        s.Send(Buff(Alex, "RETURN_BLADE", 14)).Send(Buff(Sam, "RETURN_BLADE", 8));
+        Assert.Empty(s.Completions);
+        s.Send(Buff(Sam, "RETURN_BLADE", 20, "Return Blade"));
+        Assert.Equal([Sam], s.Winners);
+        Assert.Equal("20 Return Blade", s.Completions[0].Evidence);
+    }
+
+    [Fact]
+    public void BuffStacks_Team_AddsUpTheSameBuff_NeverDifferentOnes()
+    {
+        var s = new Script(BingoMode.Team, "BuffStacks", 20, Alex, Sam).Fight();
+        s.Send(Buff(Alex, "RETURN_BLADE", 14)).Send(Buff(Sam, "STRENGTH_POWER", 8));
+        Assert.Empty(s.Completions); // different buffs don't add up
+        s.Send(Buff(Sam, "RETURN_BLADE", 6, "Return Blade"));
+        Assert.Equal([Sam], s.Winners);
+        Assert.Equal("20 Return Blade (team total)", s.Completions[0].Evidence);
+    }
+
+    [Fact]
+    public void BuffStacks_StartAgainEachFight()
+    {
+        var s = new Script(BingoMode.Team, "BuffStacks", 20, Alex, Sam).Fight();
+        s.Send(Buff(Alex, "RETURN_BLADE", 14));
+        s.Fight().Send(Buff(Sam, "RETURN_BLADE", 8));
+        Assert.Empty(s.Completions);
+    }
+
     [Fact]
     public void BlockFromEnemies_DoesNotCount()
     {
